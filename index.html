@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Progres PMCI</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; height: 100dvh; display: flex; flex-direction: column; }
+  header { background: #1a1d27; padding: 10px 16px; border-bottom: 1px solid #2d3148; flex-shrink: 0; }
+  header h1 { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+  header p { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+  .stats { display: flex; gap: 6px; padding: 8px 12px; background: #141620; border-bottom: 1px solid #2d3148; flex-shrink: 0; overflow-x: auto; }
+  .stat { display: flex; align-items: center; gap: 5px; background: #1e2235; border-radius: 8px; padding: 5px 9px; white-space: nowrap; flex-shrink: 0; }
+  .stat-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .stat-label { font-size: 10px; color: #94a3b8; }
+  .stat-val { font-size: 12px; font-weight: 700; }
+  .dot-red{background:#ef4444}.dot-yellow{background:#f59e0b}.dot-green{background:#22c55e}
+  .val-red{color:#ef4444}.val-yellow{color:#f59e0b}.val-green{color:#22c55e}
+  #map { flex: 1; min-height: 0; }
+  .sheet { position:fixed; bottom:0; left:0; right:0; background:#1a1d27; border-top:1px solid #2d3148; border-radius:16px 16px 0 0; padding:0 16px 24px; transform:translateY(100%); transition:transform 0.25s ease; z-index:1000; max-height:80dvh; overflow-y:auto; }
+  .sheet.open { transform:translateY(0); }
+  .sheet-handle { width:36px; height:4px; background:#3d4263; border-radius:2px; margin:10px auto 14px; }
+  .sheet-title { font-size:18px; font-weight:700; margin-bottom:2px; }
+  .sheet-sub { font-size:11px; color:#64748b; font-family:monospace; margin-bottom:14px; }
+  .section-label { font-size:11px; font-weight:600; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; margin-top:16px; }
+  .btn-group { display:flex; flex-direction:column; gap:7px; }
+  .btn-status { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:2px solid transparent; background:#252840; color:#e2e8f0; font-size:13px; font-weight:500; cursor:pointer; text-align:left; -webkit-tap-highlight-color:transparent; }
+  .btn-status.active-belum{border-color:#ef4444;background:#2d1c1c}
+  .btn-status.active-masalah{border-color:#f59e0b;background:#2d2614}
+  .btn-status.active-selesai{border-color:#22c55e;background:#1a2d1e}
+  .btn-icon { width:13px; height:13px; border-radius:50%; flex-shrink:0; }
+  .realisasi-box { background:#252840; border-radius:10px; padding:12px; margin-top:4px; }
+  .realisasi-box.has-data { border:1px solid #22c55e33; }
+  .offset-badge { display:inline-flex; align-items:center; gap:5px; background:#1e3a2f; color:#22c55e; font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; margin-bottom:10px; }
+  .input-row { display:flex; gap:8px; margin-bottom:8px; }
+  .input-group { flex:1; }
+  .input-group label { font-size:10px; color:#94a3b8; display:block; margin-bottom:3px; }
+  .input-group input { width:100%; background:#1a1d27; border:1px solid #3d4263; border-radius:6px; padding:8px 10px; color:#e2e8f0; font-size:13px; font-family:monospace; }
+  .input-group input:focus { outline:none; border-color:#22c55e; }
+  .btn-save { width:100%; padding:10px; border-radius:8px; background:#22c55e; color:#0f1117; border:none; font-size:13px; font-weight:700; cursor:pointer; }
+  .btn-clear { width:100%; padding:8px; border-radius:8px; background:#2d3148; color:#94a3b8; border:none; font-size:12px; cursor:pointer; margin-top:6px; }
+  .btn-close-sheet { margin-top:12px; width:100%; padding:11px; border-radius:8px; background:#252840; color:#94a3b8; border:none; font-size:13px; cursor:pointer; }
+  .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:999; }
+  .overlay.show { display:block; }
+  .legend { position:absolute; bottom:80px; left:12px; z-index:500; background:rgba(26,29,39,0.92); border-radius:10px; padding:8px 11px; font-size:11px; border:1px solid #2d3148; }
+  .leg-row { display:flex; align-items:center; gap:7px; margin-bottom:4px; }
+  .leg-row:last-child { margin-bottom:0; }
+  .leg-a { width:14px; height:14px; border-radius:50%; border:2px solid #94a3b8; background:transparent; flex-shrink:0; }
+  .leg-r { width:14px; height:14px; border-radius:50%; background:#94a3b8; flex-shrink:0; }
+  .leaflet-control-layers { font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <h1>Progres PMCI</h1>
+    <button onclick="syncFromSheet()" style="background:#22c55e;color:#0f1117;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;">⟳ Sync</button>
+  </div>
+  <p id="last-update">Menghubungkan ke spreadsheet...</p>
+</header>
+<div class="stats">
+  <div class="stat"><div class="stat-dot dot-red"></div><span class="stat-label">Belum</span><span class="stat-val val-red" id="cnt-belum">-</span></div>
+  <div class="stat"><div class="stat-dot dot-yellow"></div><span class="stat-label">Masalah</span><span class="stat-val val-yellow" id="cnt-masalah">-</span></div>
+  <div class="stat"><div class="stat-dot dot-green"></div><span class="stat-label">Selesai</span><span class="stat-val val-green" id="cnt-selesai">-</span></div>
+  <div class="stat"><div class="stat-dot" style="background:#94a3b8"></div><span class="stat-label">Total</span><span class="stat-val" style="color:#94a3b8">158</span></div>
+</div>
+<div id="map">
+  <div class="legend">
+    <div class="leg-row"><div class="leg-a"></div><span style="color:#cbd5e1">(a) Titik Rencana</span></div>
+    <div class="leg-row"><div class="leg-r"></div><span style="color:#cbd5e1">(r) Titik Realisasi</span></div>
+  </div>
+</div>
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="sheet-name"></div>
+  <div class="sheet-sub" id="sheet-coord"></div>
+  <div class="section-label">Status Pengerjaan</div>
+  <div class="btn-group">
+    <button class="btn-status" id="btn-belum" onclick="setStatus('belum')"><div class="btn-icon" style="background:#ef4444"></div>Belum dikerjakan</button>
+    <button class="btn-status" id="btn-masalah" onclick="setStatus('masalah')"><div class="btn-icon" style="background:#f59e0b"></div>Sudah ke titik – masalah izin administrasi</button>
+    <button class="btn-status" id="btn-selesai" onclick="setStatus('selesai')"><div class="btn-icon" style="background:#22c55e"></div>Sudah ditanam / selesai</button>
+  </div>
+  <div class="section-label">Titik Realisasi (r)</div>
+  <div class="realisasi-box" id="realisasi-box">
+    <div class="offset-badge" id="offset-badge" style="display:none">
+      <span id="offset-val"></span>
+    </div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>UTM X (Easting)</label>
+        <input type="number" id="inp-utmx" placeholder="cth: 441941">
+      </div>
+      <div class="input-group">
+        <label>UTM Y (Northing)</label>
+        <input type="number" id="inp-utmy" placeholder="cth: 415943">
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveRealisasi()">Simpan Titik Realisasi</button>
+    <button class="btn-clear" id="btn-clear-r" onclick="clearRealisasi()" style="display:none">Hapus titik realisasi</button>
+  </div>
+  <button class="btn-close-sheet" onclick="closeSheet()">Tutup</button>
+</div>
+
+<script>
+// ── UTM Zone 47N → WGS84 ──
+function utm47N_to_latlon(E, N) {
+  const a=6378137.0,f=1/298.257223563,b=a*(1-f),e2=1-(b*b)/(a*a),ep2=e2/(1-e2);
+  const k0=0.9996,E0=500000,lon0=99*Math.PI/180;
+  const x=E-E0,y=N;
+  const M=y/k0;
+  const mu=M/(a*(1-e2/4-3*e2*e2/64-5*e2*e2*e2/256));
+  const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+  const phi1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1**2/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu);
+  const N1=a/Math.sqrt(1-e2*Math.sin(phi1)**2);
+  const T1=Math.tan(phi1)**2,C1=ep2*Math.cos(phi1)**2;
+  const R1=a*(1-e2)/(1-e2*Math.sin(phi1)**2)**1.5;
+  const D=x/(N1*k0);
+  const lat=phi1-(N1*Math.tan(phi1)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*ep2)*D**4/24+(61+90*T1+298*C1+45*T1**2-252*ep2-3*C1**2)*D**6/720);
+  const lon=lon0+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1**2+8*ep2+24*T1**2)*D**5/120)/Math.cos(phi1);
+  return [lat*180/Math.PI, lon*180/Math.PI];
+}
+
+// WGS84 → UTM 47N
+function latlon_to_utm47N(lat_deg, lon_deg) {
+  const a=6378137,f=1/298.257223563,k0=0.9996,E0=500000,lon0=99*Math.PI/180;
+  const e2=2*f-f*f,ep2=e2/(1-e2);
+  const lat=lat_deg*Math.PI/180,lon=lon_deg*Math.PI/180;
+  const N=a/Math.sqrt(1-e2*Math.sin(lat)**2);
+  const T=Math.tan(lat)**2,C=ep2*Math.cos(lat)**2,A=Math.cos(lat)*(lon-lon0);
+  const e4=e2*e2,e6=e4*e2;
+  const M=a*((1-e2/4-3*e4/64-5*e6/256)*lat-(3*e2/8+3*e4/32+45*e6/1024)*Math.sin(2*lat)+(15*e4/256+45*e6/1024)*Math.sin(4*lat)-(35*e6/3072)*Math.sin(6*lat));
+  const x=k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T*T+72*C-58*ep2)*A**5/120)+E0;
+  const y=k0*(M+N*Math.tan(lat)*(A*A/2+(5-T+9*C+4*C*C)*A**4/24+(61-58*T+T*T+600*C-330*ep2)*A**6/720));
+  return {x,y};
+}
+
+function jarakUTM(x1,y1,x2,y2){ return Math.sqrt((x2-x1)**2+(y2-y1)**2); }
+
+// ── Data titik rencana (WGS84) ──
+const TITIK = [
+  {nama:"DL01",lon:98.414736,lat:3.822455},{nama:"DL02",lon:98.43975,lat:3.796516},
+  {nama:"DL03",lon:98.460225,lat:3.766812},{nama:"DL04",lon:98.478759,lat:3.738023},
+  {nama:"DL05",lon:98.491812,lat:3.704494},{nama:"DL06",lon:98.508352,lat:3.673784},
+  {nama:"DL07",lon:98.522436,lat:3.641523},{nama:"DL08",lon:98.530628,lat:3.625464},
+  {nama:"DL09",lon:98.535376,lat:3.641667},{nama:"DL10",lon:98.539868,lat:3.641667},
+  {nama:"DL11",lon:98.54436,lat:3.641667},{nama:"DL12",lon:98.548851,lat:3.641667},
+  {nama:"DL13",lon:98.553343,lat:3.641667},{nama:"DL14",lon:98.526393,lat:3.655114},
+  {nama:"DL15",lon:98.530885,lat:3.655114},{nama:"DL16",lon:98.539868,lat:3.655114},
+  {nama:"DL17",lon:98.54436,lat:3.655114},{nama:"DL18",lon:98.548851,lat:3.655114},
+  {nama:"DL19",lon:98.553343,lat:3.655114},{nama:"DL20",lon:98.557834,lat:3.655114},
+  {nama:"DL21",lon:98.521902,lat:3.668562},{nama:"DL22",lon:98.526393,lat:3.668562},
+  {nama:"DL23",lon:98.530885,lat:3.668562},{nama:"DL24",lon:98.539868,lat:3.668562},
+  {nama:"DL25",lon:98.54436,lat:3.668562},{nama:"DL26",lon:98.548851,lat:3.668562},
+  {nama:"DL27",lon:98.553343,lat:3.668562},{nama:"DL28",lon:98.557834,lat:3.668562},
+  {nama:"DL29",lon:98.51741,lat:3.682009},{nama:"DL30",lon:98.521902,lat:3.682009},
+  {nama:"DL31",lon:98.526393,lat:3.682009},{nama:"DL32",lon:98.530885,lat:3.682009},
+  {nama:"DL33",lon:98.54436,lat:3.682009},{nama:"DL34",lon:98.548851,lat:3.682009},
+  {nama:"DL35",lon:98.553343,lat:3.682009},{nama:"DL36",lon:98.557834,lat:3.682009},
+  {nama:"DL37",lon:98.512918,lat:3.695455},{nama:"DL38",lon:98.51741,lat:3.695455},
+  {nama:"DL39",lon:98.521902,lat:3.695455},{nama:"DL40",lon:98.526393,lat:3.695455},
+  {nama:"DL41",lon:98.530885,lat:3.695455},{nama:"DL42",lon:98.535376,lat:3.695455},
+  {nama:"DL43",lon:98.54436,lat:3.695455},{nama:"DL44",lon:98.548851,lat:3.695455},
+  {nama:"DL45",lon:98.553343,lat:3.695455},{nama:"DL46",lon:98.503935,lat:3.708902},
+  {nama:"DL47",lon:98.508427,lat:3.708902},{nama:"DL48",lon:98.512918,lat:3.708902},
+  {nama:"DL49",lon:98.51741,lat:3.708902},{nama:"DL50",lon:98.521902,lat:3.708902},
+  {nama:"DL51",lon:98.526393,lat:3.708902},{nama:"DL52",lon:98.539868,lat:3.708902},
+  {nama:"DL53",lon:98.54436,lat:3.708902},{nama:"DL54",lon:98.548851,lat:3.708902},
+  {nama:"DL55",lon:98.494952,lat:3.722348},{nama:"DL56",lon:98.499444,lat:3.722348},
+  {nama:"DL57",lon:98.503935,lat:3.722348},{nama:"DL58",lon:98.508427,lat:3.722348},
+  {nama:"DL59",lon:98.512918,lat:3.722348},{nama:"DL60",lon:98.51741,lat:3.722348},
+  {nama:"DL61",lon:98.521902,lat:3.722348},{nama:"DL62",lon:98.526393,lat:3.722348},
+  {nama:"DL63",lon:98.530885,lat:3.722348},{nama:"DL64",lon:98.535376,lat:3.722348},
+  {nama:"DL65",lon:98.490461,lat:3.735795},{nama:"DL66",lon:98.494952,lat:3.735795},
+  {nama:"DL67",lon:98.499444,lat:3.735795},{nama:"DL68",lon:98.503935,lat:3.735795},
+  {nama:"DL69",lon:98.508427,lat:3.735795},{nama:"DL70",lon:98.512918,lat:3.735795},
+  {nama:"DL71",lon:98.51741,lat:3.735795},{nama:"DL72",lon:98.521902,lat:3.735795},
+  {nama:"DL73",lon:98.526393,lat:3.735795},{nama:"DL74",lon:98.490461,lat:3.749241},
+  {nama:"DL75",lon:98.494952,lat:3.749241},{nama:"DL76",lon:98.499444,lat:3.749241},
+  {nama:"DL77",lon:98.503935,lat:3.749241},{nama:"DL78",lon:98.508427,lat:3.749241},
+  {nama:"DL79",lon:98.512918,lat:3.749241},{nama:"DL80",lon:98.51741,lat:3.749241},
+  {nama:"DL81",lon:98.521902,lat:3.749241},{nama:"DL82",lon:98.476986,lat:3.762686},
+  {nama:"DL83",lon:98.481477,lat:3.762686},{nama:"DL84",lon:98.485969,lat:3.762686},
+  {nama:"DL85",lon:98.490461,lat:3.762686},{nama:"DL86",lon:98.494952,lat:3.762686},
+  {nama:"DL87",lon:98.499444,lat:3.762686},{nama:"DL88",lon:98.503935,lat:3.762686},
+  {nama:"DL89",lon:98.508427,lat:3.762686},{nama:"DL90",lon:98.512918,lat:3.762686},
+  {nama:"DL91",lon:98.51741,lat:3.762686},{nama:"DL92",lon:98.468003,lat:3.776132},
+  {nama:"DL93",lon:98.472494,lat:3.776132},{nama:"DL94",lon:98.476986,lat:3.776132},
+  {nama:"DL95",lon:98.481477,lat:3.776132},{nama:"DL96",lon:98.485969,lat:3.776132},
+  {nama:"DL97",lon:98.490461,lat:3.776132},{nama:"DL98",lon:98.494952,lat:3.776132},
+  {nama:"DL99",lon:98.499444,lat:3.776132},{nama:"DL100",lon:98.503935,lat:3.776132},
+  {nama:"DL101",lon:98.45902,lat:3.789577},{nama:"DL102",lon:98.463511,lat:3.789577},
+  {nama:"DL103",lon:98.468003,lat:3.789577},{nama:"DL104",lon:98.472494,lat:3.789577},
+  {nama:"DL105",lon:98.476986,lat:3.789577},{nama:"DL106",lon:98.481477,lat:3.789577},
+  {nama:"DL107",lon:98.485969,lat:3.789577},{nama:"DL108",lon:98.490461,lat:3.789577},
+  {nama:"DL109",lon:98.494952,lat:3.789577},{nama:"DL110",lon:98.499444,lat:3.789577},
+  {nama:"DL111",lon:98.450036,lat:3.803022},{nama:"DL112",lon:98.454528,lat:3.803022},
+  {nama:"DL113",lon:98.45902,lat:3.803022},{nama:"DL114",lon:98.463511,lat:3.803022},
+  {nama:"DL115",lon:98.468003,lat:3.803022},{nama:"DL116",lon:98.472494,lat:3.803022},
+  {nama:"DL117",lon:98.476986,lat:3.803022},{nama:"DL118",lon:98.481477,lat:3.803022},
+  {nama:"DL119",lon:98.485969,lat:3.803022},{nama:"DL120",lon:98.490461,lat:3.803022},
+  {nama:"DL121",lon:98.494952,lat:3.803022},{nama:"DL122",lon:98.499444,lat:3.803022},
+  {nama:"DL123",lon:98.436562,lat:3.816467},{nama:"DL124",lon:98.441053,lat:3.816467},
+  {nama:"DL125",lon:98.445545,lat:3.816467},{nama:"DL126",lon:98.450036,lat:3.816467},
+  {nama:"DL127",lon:98.454528,lat:3.816467},{nama:"DL128",lon:98.45902,lat:3.816467},
+  {nama:"DL129",lon:98.463511,lat:3.816467},{nama:"DL130",lon:98.468003,lat:3.816467},
+  {nama:"DL131",lon:98.472494,lat:3.816467},{nama:"DL132",lon:98.476986,lat:3.816467},
+  {nama:"DL133",lon:98.481477,lat:3.816467},{nama:"DL134",lon:98.503245,lat:3.803021},
+  {nama:"DL135",lon:98.505094,lat:3.789571},{nama:"DL136",lon:98.510221,lat:3.776115},
+  {nama:"DL137",lon:98.520096,lat:3.76268},{nama:"DL138",lon:98.527463,lat:3.749228},
+  {nama:"DL139",lon:98.531009,lat:3.735797},{nama:"DL140",lon:98.539903,lat:3.722345},
+  {nama:"DL141",lon:98.552033,lat:3.708886},{nama:"DL142",lon:98.559444,lat:3.695436},
+  {nama:"DL143",lon:98.56368,lat:3.681994},{nama:"DL144",lon:98.563238,lat:3.668516},
+  {nama:"DL145",lon:98.561253,lat:3.65513},{nama:"DL146",lon:98.558066,lat:3.641653},
+  {nama:"DL147",lon:98.510953,lat:3.79629},{nama:"DL148",lon:98.514732,lat:3.782818},
+  {nama:"DL149",lon:98.523992,lat:3.76939},{nama:"DL150",lon:98.531764,lat:3.755951},
+  {nama:"DL151",lon:98.53578,lat:3.742504},{nama:"DL152",lon:98.542883,lat:3.729057},
+  {nama:"DL153",lon:98.555692,lat:3.715608},{nama:"DL154",lon:98.563611,lat:3.702177},
+  {nama:"DL155",lon:98.569576,lat:3.688695},{nama:"DL156",lon:98.5703,lat:3.675263},
+  {nama:"DL157",lon:98.569055,lat:3.661818},{nama:"DL158",lon:98.566824,lat:3.648373}
+];
+
+// ── Data dari spreadsheet (update 13 Juni 2026) ──
+const SELESAI_AWAL = new Set([
+  "DL01","DL03","DL82","DL83","DL84","DL85","DL86","DL87","DL88","DL89","DL90",
+  "DL91","DL92","DL93","DL94","DL95","DL96","DL97","DL98","DL99","DL100",
+  "DL104","DL105","DL106","DL107","DL108","DL109","DL110","DL129","DL134",
+  "DL135","DL136","DL137","DL147","DL148","DL149","DL154"
+]);
+
+const REALISASI_AWAL = {
+  "DL03":{x:440050,y:416383},"DL82":{x:441941,y:415943},"DL83":{x:442415,y:415871},
+  "DL84":{x:442979,y:415769},"DL85":{x:443392,y:415913},"DL86":{x:443890,y:415899},
+  "DL87":{x:444402,y:415945},"DL88":{x:444794,y:418920},"DL89":{x:445294,y:415933},
+  "DL90":{x:445896,y:415880},"DL91":{x:446279,y:415487},"DL92":{x:440949,y:417397},
+  "DL93":{x:441439,y:417416},"DL94":{x:441928,y:417403},"DL95":{x:442380,y:417395},
+  "DL96":{x:445900,y:417554},"DL97":{x:445538,y:417480},"DL98":{x:443926,y:417599},
+  "DL99":{x:444455,y:417684},"DL100":{x:444923,y:417403},"DL104":{x:441445,y:418928},
+  "DL105":{x:441754,y:418871},"DL106":{x:442442,y:418905},"DL107":{x:442925,y:418890},
+  "DL108":{x:443433,y:418895},"DL109":{x:443920,y:419034},"DL110":{x:444488,y:418992},
+  "DL129":{x:440326,y:421789},"DL134":{x:444850,y:420364},"DL135":{x:445065,y:415946},
+  "DL136":{x:445065,y:415946},"DL137":{x:446942,y:415648},"DL147":{x:445686,y:419646},
+  "DL148":{x:446118,y:415096},"DL149":{x:447107,y:416693},"DL154":{x:451520,y:409197}
+};
+
+const COLOR={belum:'#ef4444',masalah:'#f59e0b',selesai:'#22c55e'};
+const STORAGE_KEY='bor_status_v4',REAL_KEY='bor_realisasi_v2';
+const SHEET_URL='https://script.google.com/macros/s/AKfycbwS6c34J5QDghJ44i2jmlgwc_YGMO_mlZmkB7r7_0YbOx7fwATTAgnRXlL60nEBIab9xw/exec';
+
+let statusMap={},realisasiMap={};
+try{const s=localStorage.getItem(STORAGE_KEY);if(s)statusMap=JSON.parse(s);}catch(e){}
+try{const r=localStorage.getItem(REAL_KEY);if(r)realisasiMap=JSON.parse(r);}catch(e){}
+
+TITIK.forEach(t=>{
+  if(!statusMap[t.nama]) statusMap[t.nama]=SELESAI_AWAL.has(t.nama)?'selesai':'belum';
+  if(!realisasiMap[t.nama]&&REALISASI_AWAL[t.nama]) realisasiMap[t.nama]=REALISASI_AWAL[t.nama];
+});
+
+function save(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(statusMap));}catch(e){}
+  try{localStorage.setItem(REAL_KEY,JSON.stringify(realisasiMap));}catch(e){}
+}
+save();
+
+// ── Sync dari Google Sheets ──
+function syncFromSheet(){
+  document.getElementById('last-update').textContent='Mengambil data dari spreadsheet...';
+  fetch(SHEET_URL)
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.status!=='ok') throw new Error(res.message||'Error');
+      let updated=0;
+      res.data.forEach(row=>{
+        const t=TITIK.find(x=>x.nama===row.nama);
+        if(!t) return;
+        // Jika ada tanggal sampling → selesai
+        if(row.tanggal && row.tanggal!=='' && row.tanggal!=='undefined'){
+          if(statusMap[row.nama]!=='selesai'){
+            statusMap[row.nama]='selesai';
+            if(markersA[row.nama]) markersA[row.nama].setIcon(makeIconA('selesai'));
+            updated++;
+          }
+        }
+        // Jika ada koordinat realisasi baru dari sheet
+        if(row.utm_xa && row.utm_ya && row.utm_xa!=='' && row.utm_xa!=='undefined'){
+          const nx=parseInt(row.utm_xa), ny=parseInt(row.utm_ya);
+          if(!isNaN(nx)&&!isNaN(ny)&&nx>100000&&ny>100000){
+            const existing=realisasiMap[row.nama];
+            if(!existing||existing.x!==nx||existing.y!==ny){
+              realisasiMap[row.nama]={x:nx,y:ny};
+              renderRealisasi(t);
+              updated++;
+            }
+          }
+        }
+      });
+      save();
+      updateStats();
+      const now=new Date().toLocaleTimeString('id-ID');
+      document.getElementById('last-update').textContent=
+        updated>0?`Sync selesai: ${updated} titik diupdate · ${now}`:`Sudah up-to-date · ${now}`;
+    })
+    .catch(err=>{
+      document.getElementById('last-update').textContent='Gagal sync: '+err.message;
+    });
+}
+
+// Auto sync saat buka, lalu setiap 60 detik
+syncFromSheet();
+setInterval(syncFromSheet, 60000);
+
+// ── Map ──
+const map=L.map('map',{zoomControl:true,attributionControl:false}).setView([3.73,98.5],12);
+
+const esri=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'Esri'});
+const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OSM'});
+const roads=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,opacity:0.4,attribution:'OSM'});
+
+esri.addTo(map);
+roads.addTo(map);
+
+L.control.layers(
+  {'🛰️ Satelit (Esri)':esri,'🗺️ Peta Biasa':osm},
+  {'🛣️ Jalan (OSM)':roads},
+  {position:'topright',collapsed:true}
+).addTo(map);
+
+function makeIconA(status){
+  const c=COLOR[status];
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:18px;height:18px;border-radius:50%;border:2.5px solid ${c};background:rgba(0,0,0,0.3);box-shadow:0 1px 3px rgba(0,0,0,0.6)"></div>`,
+    iconSize:[18,18],iconAnchor:[9,9]
+  });
+}
+
+function makeIconR(status){
+  const c=COLOR[status];
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:14px;height:14px;border-radius:50%;background:${c};box-shadow:0 1px 4px rgba(0,0,0,0.6);border:1.5px solid rgba(255,255,255,0.7)"></div>`,
+    iconSize:[14,14],iconAnchor:[7,7]
+  });
+}
+
+function makeLabelIcon(text){
+  return L.divIcon({
+    className:'',
+    html:`<div style="font-size:8.5px;font-weight:700;color:#fff;background:rgba(0,0,0,0.6);padding:1px 3px;border-radius:3px;white-space:nowrap;margin-top:18px;margin-left:-4px">${text}</div>`,
+    iconSize:[1,1],iconAnchor:[0,0]
+  });
+}
+
+const markersA={},markersR={},labelsA={},labelsR={},lines={};
+
+function renderRealisasi(t){
+  if(markersR[t.nama]){map.removeLayer(markersR[t.nama]);delete markersR[t.nama];}
+  if(labelsR[t.nama]){map.removeLayer(labelsR[t.nama]);delete labelsR[t.nama];}
+  if(lines[t.nama]){map.removeLayer(lines[t.nama]);delete lines[t.nama];}
+  const r=realisasiMap[t.nama];
+  if(!r)return;
+  const [rlat,rlon]=utm47N_to_latlon(r.x,r.y);
+  const mR=L.marker([rlat,rlon],{icon:makeIconR(statusMap[t.nama]),zIndexOffset:10}).addTo(map);
+  mR.on('click',()=>openSheet(t));
+  markersR[t.nama]=mR;
+  labelsR[t.nama]=L.marker([rlat,rlon],{icon:makeLabelIcon(`${t.nama}(r)`),interactive:false,zIndexOffset:20}).addTo(map);
+  lines[t.nama]=L.polyline([[t.lat,t.lon],[rlat,rlon]],{color:'#f59e0b',weight:1.5,dashArray:'4,4',opacity:0.85}).addTo(map);
+}
+
+TITIK.forEach(t=>{
+  const mA=L.marker([t.lat,t.lon],{icon:makeIconA(statusMap[t.nama])}).addTo(map);
+  mA.on('click',()=>openSheet(t));
+  markersA[t.nama]=mA;
+  labelsA[t.nama]=L.marker([t.lat,t.lon],{icon:makeLabelIcon(`${t.nama}(a)`),interactive:false,zIndexOffset:5}).addTo(map);
+  renderRealisasi(t);
+});
+
+function updateStats(){
+  const cnt={belum:0,masalah:0,selesai:0};
+  Object.values(statusMap).forEach(s=>cnt[s]++);
+  document.getElementById('cnt-belum').textContent=cnt.belum;
+  document.getElementById('cnt-masalah').textContent=cnt.masalah;
+  document.getElementById('cnt-selesai').textContent=cnt.selesai;
+}
+updateStats();
+
+let activeTitik=null;
+
+function openSheet(t){
+  activeTitik=t;
+  document.getElementById('sheet-name').textContent=t.nama;
+  document.getElementById('sheet-coord').textContent=`(a) Lat: ${t.lat.toFixed(6)}, Lon: ${t.lon.toFixed(6)}`;
+  const s=statusMap[t.nama];
+  document.getElementById('btn-belum').className='btn-status'+(s==='belum'?' active-belum':'');
+  document.getElementById('btn-masalah').className='btn-status'+(s==='masalah'?' active-masalah':'');
+  document.getElementById('btn-selesai').className='btn-status'+(s==='selesai'?' active-selesai':'');
+  const r=realisasiMap[t.nama];
+  const badge=document.getElementById('offset-badge');
+  const btnClear=document.getElementById('btn-clear-r');
+  if(r){
+    document.getElementById('inp-utmx').value=r.x;
+    document.getElementById('inp-utmy').value=r.y;
+    const planUTM=latlon_to_utm47N(t.lat,t.lon);
+    const dist=jarakUTM(planUTM.x,planUTM.y,r.x,r.y);
+    badge.style.display='inline-flex';
+    document.getElementById('offset-val').textContent=`↔ Offset: ${dist.toFixed(1)} m`;
+    document.getElementById('realisasi-box').classList.add('has-data');
+    btnClear.style.display='block';
+  } else {
+    document.getElementById('inp-utmx').value='';
+    document.getElementById('inp-utmy').value='';
+    badge.style.display='none';
+    document.getElementById('realisasi-box').classList.remove('has-data');
+    btnClear.style.display='none';
+  }
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  activeTitik=null;
+}
+
+function setStatus(status){
+  if(!activeTitik)return;
+  const t=activeTitik;
+  statusMap[t.nama]=status;
+  save();
+  markersA[t.nama].setIcon(makeIconA(status));
+  if(markersR[t.nama])markersR[t.nama].setIcon(makeIconR(status));
+  updateStats();
+  const label=status==='belum'?'Belum':status==='masalah'?'Masalah Izin':'Selesai';
+  document.getElementById('last-update').textContent=`${t.nama} → ${label} · ${new Date().toLocaleTimeString('id-ID')}`;
+  document.getElementById('btn-belum').className='btn-status'+(status==='belum'?' active-belum':'');
+  document.getElementById('btn-masalah').className='btn-status'+(status==='masalah'?' active-masalah':'');
+  document.getElementById('btn-selesai').className='btn-status'+(status==='selesai'?' active-selesai':'');
+}
+
+function saveRealisasi(){
+  if(!activeTitik)return;
+  const t=activeTitik;
+  const x=parseFloat(document.getElementById('inp-utmx').value);
+  const y=parseFloat(document.getElementById('inp-utmy').value);
+  if(isNaN(x)||isNaN(y)||x<100000||y<100000){alert('Koordinat UTM tidak valid');return;}
+  realisasiMap[t.nama]={x,y};
+  save();
+  renderRealisasi(t);
+  const planUTM=latlon_to_utm47N(t.lat,t.lon);
+  const dist=jarakUTM(planUTM.x,planUTM.y,x,y);
+  const badge=document.getElementById('offset-badge');
+  badge.style.display='inline-flex';
+  document.getElementById('offset-val').textContent=`↔ Offset: ${dist.toFixed(1)} m`;
+  document.getElementById('realisasi-box').classList.add('has-data');
+  document.getElementById('btn-clear-r').style.display='block';
+  document.getElementById('last-update').textContent=`${t.nama}(r) disimpan · offset ${dist.toFixed(1)} m`;
+}
+
+function clearRealisasi(){
+  if(!activeTitik)return;
+  const t=activeTitik;
+  delete realisasiMap[t.nama];
+  save();
+  renderRealisasi(t);
+  document.getElementById('inp-utmx').value='';
+  document.getElementById('inp-utmy').value='';
+  document.getElementById('offset-badge').style.display='none';
+  document.getElementById('realisasi-box').classList.remove('has-data');
+  document.getElementById('btn-clear-r').style.display='none';
+}
+</script>
+</body>
+</html>
