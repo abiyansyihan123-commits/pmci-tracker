@@ -90,6 +90,7 @@
     <h1>Progres PMCI</h1>
     <div style="display:flex;gap:6px;">
       <button onclick="syncFromSheet()" style="background:#22c55e;color:#0f1117;border:none;border-radius:7px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;">⟳ Sync</button>
+      <button id="btn-rencana" class="btn-plan-mode" style="background:#f59e0b" onclick="openRencanaPanel()">📋 Rencana</button>
       <button id="btn-plan-mode" class="btn-plan-mode" onclick="togglePlanMode()">🎨 Plan</button>
     </div>
   </div>
@@ -124,6 +125,7 @@
       <span style="color:#cbd5e1">13 Jun</span><span style="font-size:9px;color:#64748b;margin-left:3px;">🎨</span>
     </div>
     <div class="leg-row"><div class="leg-a" style="border-color:#ef4444"></div><span style="color:#cbd5e1">Belum</span></div>
+    <div id="leg-rencana-section"></div>
   </div>
 </div>
 <!-- Plan Mode Bar -->
@@ -194,6 +196,61 @@
     <button onclick="closeDateColorPicker()" style="width:100%;padding:10px;border-radius:10px;background:#252840;color:#94a3b8;border:none;font-size:13px;cursor:pointer;">Batal</button>
   </div>
 </div>
+
+<!-- Rencana Penanaman Panel -->
+<div id="rencana-modal" style="display:none;position:fixed;inset:0;z-index:3000;align-items:flex-end;justify-content:center;">
+  <div onclick="closeRencanaPanel()" style="position:absolute;inset:0;background:rgba(0,0,0,0.5);"></div>
+  <div style="position:relative;background:#1a1d27;border-radius:16px 16px 0 0;padding:16px 16px 24px;width:100%;max-width:480px;max-height:85dvh;overflow-y:auto;border-top:1px solid #2d3148;z-index:1;">
+    <div style="width:36px;height:4px;background:#3d4263;border-radius:2px;margin:0 auto 14px;"></div>
+    <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:4px;">📋 Rencana Penanaman</div>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:14px;">Buat grup rencana (nama + warna + tanggal), lalu pilih titik di Plan Mode dan tambahkan ke grup.</div>
+
+    <div class="section-label" style="margin-top:0;">Buat Grup Baru</div>
+    <div style="background:#252840;border-radius:10px;padding:11px;margin-bottom:14px;">
+      <div class="input-row" style="margin-bottom:8px;">
+        <div class="input-group">
+          <label>Nama Grup</label>
+          <input type="text" id="rnc-nama" placeholder="cth: Rencana Tahap 2">
+        </div>
+        <div class="input-group">
+          <label>Tanggal Rencana</label>
+          <input type="date" id="rnc-tanggal">
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+        <div class="plan-preset selected" style="background:#8b5cf6" data-color="#8b5cf6" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-preset" style="background:#3b82f6" data-color="#3b82f6" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-preset" style="background:#f97316" data-color="#f97316" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-preset" style="background:#ec4899" data-color="#ec4899" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-preset" style="background:#06b6d4" data-color="#06b6d4" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-preset" style="background:#eab308" data-color="#eab308" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-preset" style="background:#14b8a6" data-color="#14b8a6" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-preset" style="background:#f43f5e" data-color="#f43f5e" onclick="rncSelectPreset(this)"></div>
+        <div class="plan-custom-wrap" title="Warna custom">
+          <div class="plan-custom-btn">＋</div>
+          <input type="color" id="rnc-color-custom" value="#8b5cf6" oninput="rncCustomColor(this.value)" onchange="rncCustomColor(this.value)">
+        </div>
+        <span style="font-size:11px;color:#94a3b8;margin-left:4px;">Warna: <span id="rnc-color-preview" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#8b5cf6;vertical-align:middle;border:1.5px solid #fff"></span></span>
+      </div>
+      <button class="btn-save" onclick="rncCreateGroup()">+ Buat Grup</button>
+    </div>
+
+    <div class="section-label">Daftar Grup Rencana</div>
+    <div id="rnc-group-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;"></div>
+
+    <div style="background:#1e1040;border-radius:10px;padding:11px;border:1px solid #3d2d6b;margin-bottom:14px;">
+      <div style="font-size:11px;color:#c4b5fd;line-height:1.6;">
+        <b>Cara pakai:</b><br>
+        1. Buat grup di atas (nama, tanggal, warna).<br>
+        2. Buka 🎨 Plan Mode → pilih titik bor di peta.<br>
+        3. Kembali ke panel ini → klik "Tambahkan Titik Terpilih" pada grup tujuan.
+      </div>
+    </div>
+    <button onclick="rncAddSelectedToGroup()" style="width:100%;padding:12px;border-radius:10px;background:#8b5cf6;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;" id="rnc-add-btn" disabled>+ Tambahkan Titik Terpilih ke Grup Aktif</button>
+    <button onclick="closeRencanaPanel()" style="width:100%;padding:10px;border-radius:10px;background:#252840;color:#94a3b8;border:none;font-size:13px;cursor:pointer;">Tutup</button>
+  </div>
+</div>
+
 
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
@@ -429,7 +486,7 @@ const SUMUR = [
 
 const COLOR={belum:'#ef4444',masalah:'#f59e0b',selesai:'#22c55e'};
 const STORAGE_KEY='bor_status_v4',REAL_KEY='bor_realisasi_v2';
-const SHEET_URL='https://script.google.com/macros/s/AKfycbw6UFcMOr7CkRXbHnwHMKi2dJGKh7dCZk3hRjBz9s3tAx61lXL3HaP4mTe_iqdfvqzH4w/exec';
+const SHEET_URL='https://script.google.com/macros/s/AKfycbx7OZ0f_xCrKDbScAHMHP08DNyD9x8q2lErIb6PGsSkJVLoesWeIpm60s1rZ5IyJOFl7w/exec';
 
 let statusMap={},realisasiMap={};
 try{const s=localStorage.getItem(STORAGE_KEY);if(s)statusMap=JSON.parse(s);}catch(e){}
@@ -517,7 +574,11 @@ function renderRealisasi(t){
   if(!r)return;
   const [rlat,rlon]=utm47N_to_latlon(r.x,r.y);
   const mR=L.marker([rlat,rlon],{icon:makeIconR(statusMap[t.nama], t.nama),zIndexOffset:10}).addTo(map);
-  mR.on('click',()=>openSheet(t));
+  if (t.isSumur) {
+    mR.on('click',()=>{ if(planMode){toggleSelectTitik(t.nama);} else {openSheetSumur(t);} });
+  } else {
+    mR.on('click',()=>{ if(planMode){toggleSelectTitik(t.nama);} else {openSheet(t);} });
+  }
   markersR[t.nama]=mR;
   labelsR[t.nama]=L.marker([rlat,rlon],{icon:makeLabelIcon(`${t.nama}(r)`),interactive:false,zIndexOffset:20}).addTo(map);
   lines[t.nama]=L.polyline([[t.lat,t.lon],[rlat,rlon]],{color:'#f59e0b',weight:1.5,dashArray:'4,4',opacity:0.85}).addTo(map);
@@ -533,38 +594,83 @@ TITIK.forEach(t=>{
 
 function updateStats(){
   const cnt={belum:0,masalah:0,selesai:0};
-  Object.values(statusMap).forEach(s=>cnt[s]++);
+  TITIK.forEach(t=>cnt[statusMap[t.nama]]++);
   document.getElementById('cnt-belum').textContent=cnt.belum;
   document.getElementById('cnt-masalah').textContent=cnt.masalah;
   document.getElementById('cnt-selesai').textContent=cnt.selesai;
 }
 
 // ── Render Titik Sumur ──
-const SUMUR_COLOR = '#60a5fa'; // biru muda, beda dari DL
+// Sumur tetap pakai ikon belah ketupat (diamond), tapi outline & fill mengikuti
+// logika status yang sama seperti titik DL (r): outline = warna status
+// (merah=belum, kuning=masalah, hijau=selesai), fill = warna plan/rencana jika ada.
 const markersSumur = {};
 
-function makeIconSumur(isSelected) {
+function makeIconSumur(nama, isSelected) {
+  const status = statusMap[nama] || 'belum';
+  const border = COLOR[status];
+  let fill = 'rgba(0,0,0,0.3)';
+  if (planMap[nama]) fill = planMap[nama];
   const ring = isSelected ? 'box-shadow:0 0 0 3px #fff,0 2px 4px rgba(0,0,0,0.6);' : 'box-shadow:0 2px 4px rgba(0,0,0,0.6);';
   return L.divIcon({
     className:'',
-    html:`<div style="width:18px;height:18px;border-radius:3px;background:${SUMUR_COLOR};border:2px solid #fff;${ring};transform:rotate(45deg)"></div>`,
+    html:`<div style="width:18px;height:18px;border-radius:3px;background:${fill};border:3px solid ${border};${ring};transform:rotate(45deg)"></div>`,
     iconSize:[18,18],iconAnchor:[9,9]
   });
 }
 
+function refreshMarkerSumur(nama) {
+  if (markersSumur[nama]) {
+    const isSelected = planMode && selectedTitik.has(nama);
+    markersSumur[nama].setIcon(makeIconSumur(nama, isSelected));
+  }
+}
+
+function openSheetSumur(s) {
+  activeTitik = { nama: s.nama, lon: s.lon, lat: s.lat, isSumur: true, label: s.label };
+  document.getElementById('sheet-name').textContent = s.nama + ' – ' + s.label + ' (Sumur)';
+  document.getElementById('sheet-coord').textContent = `Sumur · Lat: ${s.lat.toFixed(6)}, Lon: ${s.lon.toFixed(6)}`;
+  // Status buttons tetap tampil, sama seperti DL
+  document.getElementById('btn-belum').style.display='';
+  document.getElementById('btn-masalah').style.display='';
+  document.getElementById('btn-selesai').style.display='';
+  document.getElementById('realisasi-box').style.display='';
+  const s_status = statusMap[s.nama] || 'belum';
+  document.getElementById('btn-belum').className='btn-status'+(s_status==='belum'?' active-belum':'');
+  document.getElementById('btn-masalah').className='btn-status'+(s_status==='masalah'?' active-masalah':'');
+  document.getElementById('btn-selesai').className='btn-status'+(s_status==='selesai'?' active-selesai':'');
+  // Titik realisasi (sama seperti DL)
+  const r = realisasiMap[s.nama];
+  const badge = document.getElementById('offset-badge');
+  const btnClear = document.getElementById('btn-clear-r');
+  if (r) {
+    document.getElementById('inp-utmx').value = r.x;
+    document.getElementById('inp-utmy').value = r.y;
+    const planUTM = latlon_to_utm47N(s.lat, s.lon);
+    const dist = jarakUTM(planUTM.x, planUTM.y, r.x, r.y);
+    badge.style.display = 'inline-flex';
+    document.getElementById('offset-val').textContent = `↔ Offset: ${dist.toFixed(1)} m`;
+    document.getElementById('realisasi-box').classList.add('has-data');
+    btnClear.style.display = 'block';
+  } else {
+    document.getElementById('inp-utmx').value = '';
+    document.getElementById('inp-utmy').value = '';
+    badge.style.display = 'none';
+    document.getElementById('realisasi-box').classList.remove('has-data');
+    btnClear.style.display = 'none';
+  }
+  updateSheetPlanPreview(s.nama);
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('overlay').classList.add('show');
+}
+
 SUMUR.forEach(s => {
-  const m = L.marker([s.lat, s.lon], {icon: makeIconSumur(false)}).addTo(map);
+  if (!statusMap[s.nama]) statusMap[s.nama] = 'belum';
+  s.isSumur = true; // tag agar renderRealisasi/openSheet tahu ini titik sumur
+  const m = L.marker([s.lat, s.lon], {icon: makeIconSumur(s.nama, false)}).addTo(map);
   m.on('click', () => {
-    if (planMode) return;
-    document.getElementById('sheet-name').textContent = s.nama + ' – ' + s.label;
-    document.getElementById('sheet-coord').textContent = `Sumur · Lat: ${s.lat.toFixed(6)}, Lon: ${s.lon.toFixed(6)}`;
-    document.getElementById('btn-belum').style.display='none';
-    document.getElementById('btn-masalah').style.display='none';
-    document.getElementById('btn-selesai').style.display='none';
-    document.getElementById('realisasi-box').style.display='none';
-    activeTitik = null;
-    document.getElementById('sheet').classList.add('open');
-    document.getElementById('overlay').classList.add('show');
+    if (planMode) { toggleSelectTitik(s.nama); return; }
+    openSheetSumur(s);
   });
   // Label
   L.marker([s.lat, s.lon], {
@@ -576,10 +682,8 @@ SUMUR.forEach(s => {
     interactive:false, zIndexOffset:5
   }).addTo(map);
   markersSumur[s.nama] = m;
+  renderRealisasi(s);
 });
-
-// Restore btn visibility when opening DL sheet
-const _origBtnRestore = openSheet;
 
 updateStats();
 
@@ -597,8 +701,13 @@ function setStatus(status){
   const t=activeTitik;
   statusMap[t.nama]=status;
   save();
-  markersA[t.nama].setIcon(makeIconA(status));
-  if(markersR[t.nama])markersR[t.nama].setIcon(makeIconR(status, activeTitik ? activeTitik.nama : null));
+  if (t.isSumur) {
+    refreshMarkerSumur(t.nama);
+    if(markersR[t.nama])markersR[t.nama].setIcon(makeIconR(status, t.nama));
+  } else {
+    markersA[t.nama].setIcon(makeIconAWithPlan(t.nama, status));
+    if(markersR[t.nama])markersR[t.nama].setIcon(makeIconR(status, t.nama));
+  }
   updateStats();
   const label=status==='belum'?'Belum':status==='masalah'?'Masalah Izin':'Selesai';
   document.getElementById('last-update').textContent=`${t.nama} → ${label} · ${new Date().toLocaleTimeString('id-ID')}`;
@@ -712,6 +821,14 @@ function enablePlanClicks() {
       markersR[t.nama].on('click', () => toggleSelectTitik(t.nama));
     }
   });
+  SUMUR.forEach(s => {
+    markersSumur[s.nama].off('click');
+    markersSumur[s.nama].on('click', () => toggleSelectTitik(s.nama));
+    if(markersR[s.nama]) {
+      markersR[s.nama].off('click');
+      markersR[s.nama].on('click', () => toggleSelectTitik(s.nama));
+    }
+  });
 }
 
 function disablePlanClicks() {
@@ -723,6 +840,22 @@ function disablePlanClicks() {
       markersR[t.nama].on('click', () => openSheet(t));
     }
   });
+  SUMUR.forEach(s => {
+    markersSumur[s.nama].off('click');
+    markersSumur[s.nama].on('click', () => openSheetSumur(s));
+    if(markersR[s.nama]) {
+      markersR[s.nama].off('click');
+      markersR[s.nama].on('click', () => openSheetSumur(s));
+    }
+  });
+}
+
+function refreshMarkerAny(nama) {
+  if (markersSumur[nama]) {
+    refreshMarkerSumur(nama);
+  } else {
+    refreshMarkerA(nama);
+  }
 }
 
 function toggleSelectTitik(nama) {
@@ -731,14 +864,14 @@ function toggleSelectTitik(nama) {
   } else {
     selectedTitik.add(nama);
   }
-  refreshMarkerA(nama);
+  refreshMarkerAny(nama);
   updateSelCount();
 }
 
 function clearSelection() {
   const prev = new Set(selectedTitik);
   selectedTitik.clear();
-  prev.forEach(n => refreshMarkerA(n));
+  prev.forEach(n => refreshMarkerAny(n));
   updateSelCount();
 }
 
@@ -768,7 +901,7 @@ function applyPlanColor() {
   if (selectedTitik.size === 0) { alert('Pilih dulu titik-titiknya di peta'); return; }
   selectedTitik.forEach(nama => {
     planMap[nama] = selectedPlanColor;
-    refreshMarkerA(nama);
+    refreshMarkerAny(nama);
   });
   savePlan();
   syncPlanToSheet();
@@ -779,7 +912,7 @@ function clearPlanSelected() {
   if (selectedTitik.size === 0) { alert('Pilih dulu titik yang ingin dihapus warnanya'); return; }
   selectedTitik.forEach(nama => {
     delete planMap[nama];
-    refreshMarkerA(nama);
+    refreshMarkerAny(nama);
   });
   savePlan();
   syncPlanToSheet();
@@ -788,7 +921,7 @@ function clearPlanSelected() {
 
 function resetAllPlan() {
   if (!confirm('Hapus semua warna plan?')) return;
-  Object.keys(planMap).forEach(n => { delete planMap[n]; refreshMarkerA(n); });
+  Object.keys(planMap).forEach(n => { delete planMap[n]; refreshMarkerAny(n); });
   savePlan();
   syncPlanToSheet();
   clearSelection();
@@ -805,7 +938,7 @@ function setSinglePlanColor(color) {
   planMap[activeTitik.nama] = color;
   savePlan();
   syncPlanToSheet();
-  refreshMarkerA(activeTitik.nama);
+  refreshMarkerAny(activeTitik.nama);
   updateSheetPlanPreview(activeTitik.nama);
 }
 
@@ -814,7 +947,7 @@ function clearSinglePlan() {
   delete planMap[activeTitik.nama];
   savePlan();
   syncPlanToSheet();
-  refreshMarkerA(activeTitik.nama);
+  refreshMarkerAny(activeTitik.nama);
   updateSheetPlanPreview(activeTitik.nama);
 }
 
@@ -890,6 +1023,29 @@ TITIK.forEach(t => {
 let dragStart = null, dragging = false;
 const dragRectEl = document.getElementById('drag-rect');
 
+function selectMarkersInRect(r) {
+  TITIK.forEach(t => {
+    const mEl = markersA[t.nama].getElement();
+    if (!mEl) return;
+    const mr = mEl.getBoundingClientRect();
+    const cx = mr.left + mr.width/2, cy = mr.top + mr.height/2;
+    if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+      selectedTitik.add(t.nama);
+      refreshMarkerA(t.nama);
+    }
+  });
+  SUMUR.forEach(s => {
+    const mEl = markersSumur[s.nama].getElement();
+    if (!mEl) return;
+    const mr = mEl.getBoundingClientRect();
+    const cx = mr.left + mr.width/2, cy = mr.top + mr.height/2;
+    if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
+      selectedTitik.add(s.nama);
+      refreshMarkerSumur(s.nama);
+    }
+  });
+}
+
 map.getContainer().addEventListener('mousedown', e => {
   if (!planMode || e.button !== 0) return;
   // Only drag if not clicking a marker
@@ -920,16 +1076,7 @@ document.addEventListener('mouseup', e => {
     const r = dragRectEl.getBoundingClientRect();
     dragRectEl.style.display = 'none';
     // Find markers inside rect
-    TITIK.forEach(t => {
-      const mEl = markersA[t.nama].getElement();
-      if (!mEl) return;
-      const mr = mEl.getBoundingClientRect();
-      const cx = mr.left + mr.width/2, cy = mr.top + mr.height/2;
-      if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
-        selectedTitik.add(t.nama);
-        refreshMarkerA(t.nama);
-      }
-    });
+    selectMarkersInRect(r);
     updateSelCount();
   }
   dragStart = null;
@@ -968,16 +1115,7 @@ document.addEventListener('touchend', e => {
     map.dragging.enable();
     const r = dragRectEl.getBoundingClientRect();
     dragRectEl.style.display = 'none';
-    TITIK.forEach(t => {
-      const mEl = markersA[t.nama].getElement();
-      if (!mEl) return;
-      const mr = mEl.getBoundingClientRect();
-      const cx = mr.left + mr.width/2, cy = mr.top + mr.height/2;
-      if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) {
-        selectedTitik.add(t.nama);
-        refreshMarkerA(t.nama);
-      }
-    });
+    selectMarkersInRect(r);
     updateSelCount();
   }
   touchDragStart = null;
@@ -1008,13 +1146,147 @@ function syncPlanFromSheet(data) {
   Object.entries(data).forEach(([nama, color]) => {
     if (planMap[nama] !== color) {
       planMap[nama] = color;
-      refreshMarkerA(nama);
+      refreshMarkerAny(nama);
       changed = true;
     }
   });
   if (changed) savePlan();
 }
 
+// ══════════════════════════════════════════════
+// RENCANA PENANAMAN (grup: nama + warna + tanggal rencana)
+// ══════════════════════════════════════════════
+const RENCANA_KEY = 'bor_rencana_groups_v1';
+const RENCANA_MAP_KEY = 'bor_rencana_map_v1';
+let rencanaGroups = []; // [{id, nama, color, tanggal}]
+let rencanaMap = {}; // {nama: groupId}
+let rencanaActiveGroupId = null;
+let rncSelectedColor = '#8b5cf6';
+
+try {
+  const rg = localStorage.getItem(RENCANA_KEY);
+  if (rg) rencanaGroups = JSON.parse(rg);
+} catch(e) {}
+try {
+  const rm = localStorage.getItem(RENCANA_MAP_KEY);
+  if (rm) rencanaMap = JSON.parse(rm);
+} catch(e) {}
+
+function saveRencanaGroups() {
+  try { localStorage.setItem(RENCANA_KEY, JSON.stringify(rencanaGroups)); } catch(e) {}
+}
+function saveRencanaMap() {
+  try { localStorage.setItem(RENCANA_MAP_KEY, JSON.stringify(rencanaMap)); } catch(e) {}
+}
+
+function openRencanaPanel() {
+  renderRencanaGroupList();
+  document.getElementById('rencana-modal').style.display = 'flex';
+}
+
+function closeRencanaPanel() {
+  document.getElementById('rencana-modal').style.display = 'none';
+}
+
+function rncSelectPreset(el) {
+  document.querySelectorAll('#rencana-modal .plan-preset').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  rncSelectedColor = el.dataset.color;
+  document.getElementById('rnc-color-preview').style.background = rncSelectedColor;
+  document.getElementById('rnc-color-custom').value = rncSelectedColor;
+}
+
+function rncCustomColor(val) {
+  rncSelectedColor = val;
+  document.getElementById('rnc-color-preview').style.background = val;
+  document.querySelectorAll('#rencana-modal .plan-preset').forEach(e => e.classList.remove('selected'));
+}
+
+function rncCreateGroup() {
+  const nama = document.getElementById('rnc-nama').value.trim();
+  const tanggal = document.getElementById('rnc-tanggal').value; // YYYY-MM-DD
+  if (!nama) { alert('Isi nama grup rencana dulu'); return; }
+  const id = 'rnc_' + Date.now();
+  rencanaGroups.push({ id, nama, color: rncSelectedColor, tanggal });
+  saveRencanaGroups();
+  document.getElementById('rnc-nama').value = '';
+  document.getElementById('rnc-tanggal').value = '';
+  rencanaActiveGroupId = id;
+  renderRencanaGroupList();
+  renderRencanaLegend();
+}
+
+function rncDeleteGroup(id) {
+  if (!confirm('Hapus grup rencana ini? Titik yang sudah diberi warna grup ini tidak otomatis berubah.')) return;
+  rencanaGroups = rencanaGroups.filter(g => g.id !== id);
+  if (rencanaActiveGroupId === id) rencanaActiveGroupId = null;
+  saveRencanaGroups();
+  renderRencanaGroupList();
+  renderRencanaLegend();
+}
+
+function rncSetActiveGroup(id) {
+  rencanaActiveGroupId = id;
+  renderRencanaGroupList();
+}
+
+function renderRencanaGroupList() {
+  const wrap = document.getElementById('rnc-group-list');
+  const addBtn = document.getElementById('rnc-add-btn');
+  if (rencanaGroups.length === 0) {
+    wrap.innerHTML = '<div style="font-size:12px;color:#64748b;text-align:center;padding:8px;">Belum ada grup rencana. Buat grup di atas.</div>';
+    addBtn.disabled = true;
+    return;
+  }
+  wrap.innerHTML = rencanaGroups.map(g => {
+    const active = g.id === rencanaActiveGroupId;
+    const tglLabel = g.tanggal ? new Date(g.tanggal + 'T00:00:00').toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'}) : 'Tanpa tanggal';
+    const count = Object.values(rencanaMap).filter(gid => gid === g.id).length;
+    return `<div style="background:${active ? '#2d2454' : '#252840'};border:1px solid ${active ? '#8b5cf6' : '#2d3148'};border-radius:10px;padding:10px;cursor:pointer;" onclick="rncSetActiveGroup('${g.id}')">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:16px;height:16px;border-radius:50%;background:${g.color};border:2px solid #fff;flex-shrink:0;"></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:#f1f5f9;">${g.nama}</div>
+          <div style="font-size:10px;color:#94a3b8;">${tglLabel} · ${count} titik</div>
+        </div>
+        ${active ? '<span style="font-size:10px;color:#c4b5fd;font-weight:700;">AKTIF</span>' : ''}
+        <button onclick="event.stopPropagation();rncDeleteGroup('${g.id}')" style="background:#3d1c1c;color:#ef4444;border:none;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;">Hapus</button>
+      </div>
+    </div>`;
+  }).join('');
+  addBtn.disabled = !rencanaActiveGroupId;
+}
+
+function rncAddSelectedToGroup() {
+  if (!rencanaActiveGroupId) { alert('Pilih grup aktif dulu (tap salah satu grup di daftar)'); return; }
+  if (selectedTitik.size === 0) { alert('Belum ada titik terpilih. Buka 🎨 Plan Mode lalu pilih titik di peta.'); return; }
+  const group = rencanaGroups.find(g => g.id === rencanaActiveGroupId);
+  if (!group) return;
+  selectedTitik.forEach(nama => {
+    planMap[nama] = group.color;
+    rencanaMap[nama] = group.id;
+    refreshMarkerAny(nama);
+  });
+  savePlan();
+  saveRencanaMap();
+  syncPlanToSheet();
+  renderRencanaGroupList();
+  document.getElementById('last-update').textContent = `${selectedTitik.size} titik ditambahkan ke grup "${group.nama}"`;
+  clearSelection();
+}
+
+function renderRencanaLegend() {
+  const section = document.getElementById('leg-rencana-section');
+  if (rencanaGroups.length === 0) { section.innerHTML = ''; return; }
+  let html = '<div style="margin-top:6px;font-size:10px;color:#94a3b8;font-weight:600;">RENCANA PENANAMAN:</div>';
+  rencanaGroups.forEach(g => {
+    const tglLabel = g.tanggal ? new Date(g.tanggal + 'T00:00:00').toLocaleDateString('id-ID', {day:'numeric', month:'short'}) : '';
+    html += `<div class="leg-row"><div style="width:14px;height:14px;border-radius:50%;background:${g.color};border:2px solid #fff;flex-shrink:0"></div><span style="color:#cbd5e1">${g.nama}${tglLabel ? ' · ' + tglLabel : ''}</span></div>`;
+  });
+  section.innerHTML = html;
+}
+
+renderRencanaLegend();
 // syncFromSheet — versi final dengan plan sync
 function syncFromSheet() {
   document.getElementById('last-update').textContent = 'Mengambil data dari spreadsheet...';
@@ -1024,7 +1296,7 @@ function syncFromSheet() {
       if (res.status !== 'ok') throw new Error(res.message || 'Error');
       let updated = 0;
       res.data.forEach(row => {
-        const t = TITIK.find(x => x.nama === row.nama);
+        const t = TITIK.find(x => x.nama === row.nama) || SUMUR.find(x => x.nama === row.nama);
         if (!t) return;
         if (row.tanggal && row.tanggal !== '' && row.tanggal !== 'undefined') {
           if (statusMap[row.nama] !== 'selesai') {
@@ -1032,15 +1304,19 @@ function syncFromSheet() {
             updated++;
           }
           // Update tanggal map dari sheet (format: M/D/YYYY → YYYY-MM-DD)
-          try {
-            const d = new Date(row.tanggal);
-            if (!isNaN(d)) {
-              const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-              if (!WARNA_TANGGAL[key]) WARNA_TANGGAL[key] = generateColor(key);
-              TANGGAL_MAP[row.nama] = key;
-            }
-          } catch(e2) {}
-          refreshMarkerA(row.nama);
+          // Hanya berlaku untuk titik DL (sumur tidak ikut warna-per-tanggal)
+          if (!t.isSumur) {
+            try {
+              const d = new Date(row.tanggal);
+              if (!isNaN(d)) {
+                const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+                if (!WARNA_TANGGAL[key]) WARNA_TANGGAL[key] = generateColor(key);
+                TANGGAL_MAP[row.nama] = key;
+              }
+            } catch(e2) {}
+          }
+          refreshMarkerAny(row.nama);
+          if (markersR[row.nama]) markersR[row.nama].setIcon(makeIconR(statusMap[row.nama], row.nama));
         }
         if (row.utm_xa && row.utm_ya && row.utm_xa !== '' && row.utm_xa !== 'undefined') {
           const nx = parseInt(row.utm_xa), ny = parseInt(row.utm_ya);
