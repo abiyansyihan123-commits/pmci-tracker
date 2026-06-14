@@ -458,6 +458,35 @@ const WARNA_TANGGAL = {
   "2026-06-13":"#a855f7",  // ungu  (hari 4 / hari ini)
 };
 
+// FIX 2A: Simpan/load TANGGAL_MAP ke localStorage agar konsisten antar refresh
+const TANGGAL_MAP_KEY = 'bor_tanggal_map_v1';
+try {
+  const _savedTM = localStorage.getItem(TANGGAL_MAP_KEY);
+  if (_savedTM) Object.assign(TANGGAL_MAP, JSON.parse(_savedTM));
+} catch(e) {}
+
+function saveTanggalMap() {
+  try { localStorage.setItem(TANGGAL_MAP_KEY, JSON.stringify(TANGGAL_MAP)); } catch(e) {}
+}
+
+// FIX 2C: Tambah legend row otomatis untuk tanggal baru dari sheet
+function ensureDateInLegend(dateKey) {
+  if (document.getElementById('leg-dot-' + dateKey)) return; // sudah ada
+  const label = new Date(dateKey + 'T00:00:00').toLocaleDateString('id-ID', {day:'numeric', month:'short'});
+  const color = WARNA_TANGGAL[dateKey] || '#94a3b8';
+  const section = document.getElementById('leg-rencana-section');
+  if (!section) return;
+  const row = document.createElement('div');
+  row.className = 'leg-row leg-date-row';
+  row.dataset.datekey = dateKey;
+  row.setAttribute('onclick', `openDateColorPicker('${dateKey}', '${label}')`);
+  row.style.cssText = 'cursor:pointer;border-radius:6px;padding:2px 4px;transition:background 0.15s;';
+  row.onmouseenter = function(){ this.style.background='rgba(255,255,255,0.07)'; };
+  row.onmouseleave = function(){ this.style.background='transparent'; };
+  row.innerHTML = `<div id="leg-dot-${dateKey}" style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;flex-shrink:0"></div><span style="color:#cbd5e1">${label}</span><span style="font-size:9px;color:#64748b;margin-left:3px;">🎨</span>`;
+  section.parentElement.insertBefore(row, section);
+}
+
 const REALISASI_AWAL = {
   "DL03":{x:440050,y:416383},"DL82":{x:441941,y:415943},"DL83":{x:442415,y:415871},
   "DL84":{x:442979,y:415769},"DL85":{x:443392,y:415913},"DL86":{x:443890,y:415899},
@@ -610,7 +639,13 @@ function makeIconSumur(nama, isSelected) {
   const status = statusMap[nama] || 'belum';
   const border = COLOR[status];
   let fill = 'rgba(0,0,0,0.3)';
-  if (planMap[nama]) fill = planMap[nama];
+  if (planMap[nama]) {
+    fill = planMap[nama];
+  } else if (rencanaMap && rencanaMap[nama]) {
+    // FIX 1: fallback ke warna grup rencana
+    const grp = rencanaGroups && rencanaGroups.find(g => g.id === rencanaMap[nama]);
+    if (grp) fill = grp.color;
+  }
   const ring = isSelected ? 'box-shadow:0 0 0 3px #fff,0 2px 4px rgba(0,0,0,0.6);' : 'box-shadow:0 2px 4px rgba(0,0,0,0.6);';
   return L.divIcon({
     className:'',
@@ -759,11 +794,15 @@ function savePlan() {
 // Rebuild marker icon (a) considering plan color
 function makeIconAWithPlan(nama, status) {
   const c = COLOR[status];
-  // Prioritas fill: plan manual > warna tanggal > transparan
+  // Prioritas fill: plan manual > rencana grup > warna tanggal > transparan
   let fill = 'rgba(0,0,0,0.3)';
   if (planMap[nama]) {
     fill = planMap[nama]; // warna manual dari plan mode
-  } else if (status === 'selesai' && TANGGAL_MAP[nama] && WARNA_TANGGAL[TANGGAL_MAP[nama]]) {
+  } else if (rencanaMap && rencanaMap[nama]) {
+    // FIX 1: fallback ke warna grup rencana
+    const grp = rencanaGroups && rencanaGroups.find(g => g.id === rencanaMap[nama]);
+    if (grp) fill = grp.color;
+  } else if (TANGGAL_MAP[nama] && WARNA_TANGGAL[TANGGAL_MAP[nama]]) {
     fill = WARNA_TANGGAL[TANGGAL_MAP[nama]]; // warna otomatis per tanggal
   }
   const isSelected = planMode && selectedTitik.has(nama);
@@ -1146,6 +1185,15 @@ function syncPlanFromSheet(data) {
   Object.entries(data).forEach(([nama, color]) => {
     if (planMap[nama] !== color) {
       planMap[nama] = color;
+      // FIX 1: refreshMarkerAny sudah handle TITIK dan SUMUR
+      refreshMarkerAny(nama);
+      changed = true;
+    }
+  });
+  // Hapus dari planMap jika tidak ada di data sheet (dibersihkan dari sana)
+  Object.keys(planMap).forEach(nama => {
+    if (!(nama in data)) {
+      delete planMap[nama];
       refreshMarkerAny(nama);
       changed = true;
     }
@@ -1298,31 +1346,46 @@ function syncFromSheet() {
       res.data.forEach(row => {
         const t = TITIK.find(x => x.nama === row.nama) || SUMUR.find(x => x.nama === row.nama);
         if (!t) return;
-        if (row.tanggal && row.tanggal !== '' && row.tanggal !== 'undefined') {
+
+        // FIX 3D: Update status berdasarkan tanggal
+        const tanggalVal = String(row.tanggal || '').trim();
+        if (tanggalVal !== '' && tanggalVal !== 'undefined') {
           if (statusMap[row.nama] !== 'selesai') {
             statusMap[row.nama] = 'selesai';
             updated++;
           }
-          // Update tanggal map dari sheet (format: M/D/YYYY → YYYY-MM-DD)
-          // Hanya berlaku untuk titik DL (sumur tidak ikut warna-per-tanggal)
+          // Update tanggal map dari sheet — FIX 2A/2B
           if (!t.isSumur) {
             try {
-              const d = new Date(row.tanggal);
+              const d = new Date(tanggalVal);
               if (!isNaN(d)) {
                 const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-                if (!WARNA_TANGGAL[key]) WARNA_TANGGAL[key] = generateColor(key);
+                // FIX 2B: simpan warna baru segera ke localStorage
+                if (!WARNA_TANGGAL[key]) {
+                  WARNA_TANGGAL[key] = generateColor(key);
+                  saveWarnaTanggal();
+                }
                 TANGGAL_MAP[row.nama] = key;
+                // FIX 2C: pastikan legend row ada
+                ensureDateInLegend(key);
+                // update legend dot warna
+                const dot = document.getElementById('leg-dot-' + key);
+                if (dot) dot.style.background = WARNA_TANGGAL[key];
               }
             } catch(e2) {}
           }
           refreshMarkerAny(row.nama);
           if (markersR[row.nama]) markersR[row.nama].setIcon(makeIconR(statusMap[row.nama], row.nama));
         }
-        if (row.utm_xa && row.utm_ya && row.utm_xa !== '' && row.utm_xa !== 'undefined') {
-          const nx = parseInt(row.utm_xa), ny = parseInt(row.utm_ya);
+
+        // FIX 3D: Update koordinat realisasi SELALU (tidak tergantung status)
+        const xa = String(row.utm_xa || '').trim();
+        const ya = String(row.utm_ya || '').trim();
+        if (xa !== '' && xa !== 'undefined' && ya !== '' && ya !== 'undefined') {
+          const nx = parseFloat(xa), ny = parseFloat(ya);
           if (!isNaN(nx) && !isNaN(ny) && nx > 100000 && ny > 100000) {
             const existing = realisasiMap[row.nama];
-            if (!existing || existing.x !== nx || existing.y !== ny) {
+            if (!existing || Math.abs(existing.x - nx) > 0.5 || Math.abs(existing.y - ny) > 0.5) {
               realisasiMap[row.nama] = { x: nx, y: ny };
               renderRealisasi(t);
               updated++;
@@ -1330,6 +1393,10 @@ function syncFromSheet() {
           }
         }
       });
+
+      // FIX 2A: simpan TANGGAL_MAP setelah semua baris diproses
+      saveTanggalMap();
+
       // Sync plan colors from sheet
       if (res.plan) syncPlanFromSheet(res.plan);
       save();
