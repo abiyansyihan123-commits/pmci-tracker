@@ -558,6 +558,30 @@ let planMode = false;
 let selectedTitik = new Set();
 let selectedPlanColor = '#8b5cf6';
 
+// ── RENCANA state (declared early so makeIconSumur/makeIconAWithPlan can reference them safely) ──
+const RENCANA_KEY = 'bor_rencana_groups_v1';
+const RENCANA_MAP_KEY = 'bor_rencana_map_v1';
+let rencanaGroups = []; // [{id, nama, color, tanggal}]
+let rencanaMap = {}; // {nama: groupId}
+let rencanaActiveGroupId = null;
+let rncSelectedColor = '#8b5cf6';
+
+try {
+  const rg = localStorage.getItem(RENCANA_KEY);
+  if (rg) rencanaGroups = JSON.parse(rg);
+} catch(e) {}
+try {
+  const rm = localStorage.getItem(RENCANA_MAP_KEY);
+  if (rm) rencanaMap = JSON.parse(rm);
+} catch(e) {}
+
+function saveRencanaGroups() {
+  try { localStorage.setItem(RENCANA_KEY, JSON.stringify(rencanaGroups)); } catch(e) {}
+}
+function saveRencanaMap() {
+  try { localStorage.setItem(RENCANA_MAP_KEY, JSON.stringify(rencanaMap)); } catch(e) {}
+}
+
 function makeIconA(status){
   const c=COLOR[status];
   return L.divIcon({
@@ -1204,29 +1228,6 @@ function syncPlanFromSheet(data) {
 // ══════════════════════════════════════════════
 // RENCANA PENANAMAN (grup: nama + warna + tanggal rencana)
 // ══════════════════════════════════════════════
-const RENCANA_KEY = 'bor_rencana_groups_v1';
-const RENCANA_MAP_KEY = 'bor_rencana_map_v1';
-let rencanaGroups = []; // [{id, nama, color, tanggal}]
-let rencanaMap = {}; // {nama: groupId}
-let rencanaActiveGroupId = null;
-let rncSelectedColor = '#8b5cf6';
-
-try {
-  const rg = localStorage.getItem(RENCANA_KEY);
-  if (rg) rencanaGroups = JSON.parse(rg);
-} catch(e) {}
-try {
-  const rm = localStorage.getItem(RENCANA_MAP_KEY);
-  if (rm) rencanaMap = JSON.parse(rm);
-} catch(e) {}
-
-function saveRencanaGroups() {
-  try { localStorage.setItem(RENCANA_KEY, JSON.stringify(rencanaGroups)); } catch(e) {}
-}
-function saveRencanaMap() {
-  try { localStorage.setItem(RENCANA_MAP_KEY, JSON.stringify(rencanaMap)); } catch(e) {}
-}
-
 function openRencanaPanel() {
   renderRencanaGroupList();
   document.getElementById('rencana-modal').style.display = 'flex';
