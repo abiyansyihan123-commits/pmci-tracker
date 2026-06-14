@@ -106,11 +106,23 @@
     <div class="leg-row"><div class="leg-a"></div><span style="color:#cbd5e1">(a) Titik Rencana</span></div>
     <div class="leg-row"><div class="leg-r"></div><span style="color:#cbd5e1">(r) Titik Realisasi</span></div>
     <div class="leg-row"><div style="width:14px;height:14px;background:#60a5fa;border:2px solid #fff;transform:rotate(45deg);flex-shrink:0"></div><span style="color:#60a5fa">Sumur</span></div>
-    <div style="margin-top:6px;font-size:10px;color:#94a3b8;font-weight:600;">WARNA TANGGAL:</div>
-    <div class="leg-row"><div style="width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid #fff;flex-shrink:0"></div><span style="color:#cbd5e1">10 Jun</span></div>
-    <div class="leg-row"><div style="width:14px;height:14px;border-radius:50%;background:#06b6d4;border:2px solid #fff;flex-shrink:0"></div><span style="color:#cbd5e1">11 Jun</span></div>
-    <div class="leg-row"><div style="width:14px;height:14px;border-radius:50%;background:#f97316;border:2px solid #fff;flex-shrink:0"></div><span style="color:#cbd5e1">12 Jun</span></div>
-    <div class="leg-row"><div style="width:14px;height:14px;border-radius:50%;background:#a855f7;border:2px solid #fff;flex-shrink:0"></div><span style="color:#cbd5e1">13 Jun</span></div>
+    <div style="margin-top:6px;font-size:10px;color:#94a3b8;font-weight:600;">WARNA TANGGAL: <span style="font-weight:400;color:#64748b">(tap untuk ganti)</span></div>
+    <div class="leg-row leg-date-row" data-datekey="2026-06-10" onclick="openDateColorPicker('2026-06-10', '10 Jun')" style="cursor:pointer;border-radius:6px;padding:2px 4px;transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.07)'" onmouseleave="this.style.background='transparent'">
+      <div id="leg-dot-2026-06-10" style="width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid #fff;flex-shrink:0"></div>
+      <span style="color:#cbd5e1">10 Jun</span><span style="font-size:9px;color:#64748b;margin-left:3px;">🎨</span>
+    </div>
+    <div class="leg-row leg-date-row" data-datekey="2026-06-11" onclick="openDateColorPicker('2026-06-11', '11 Jun')" style="cursor:pointer;border-radius:6px;padding:2px 4px;transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.07)'" onmouseleave="this.style.background='transparent'">
+      <div id="leg-dot-2026-06-11" style="width:14px;height:14px;border-radius:50%;background:#06b6d4;border:2px solid #fff;flex-shrink:0"></div>
+      <span style="color:#cbd5e1">11 Jun</span><span style="font-size:9px;color:#64748b;margin-left:3px;">🎨</span>
+    </div>
+    <div class="leg-row leg-date-row" data-datekey="2026-06-12" onclick="openDateColorPicker('2026-06-12', '12 Jun')" style="cursor:pointer;border-radius:6px;padding:2px 4px;transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.07)'" onmouseleave="this.style.background='transparent'">
+      <div id="leg-dot-2026-06-12" style="width:14px;height:14px;border-radius:50%;background:#f97316;border:2px solid #fff;flex-shrink:0"></div>
+      <span style="color:#cbd5e1">12 Jun</span><span style="font-size:9px;color:#64748b;margin-left:3px;">🎨</span>
+    </div>
+    <div class="leg-row leg-date-row" data-datekey="2026-06-13" onclick="openDateColorPicker('2026-06-13', '13 Jun')" style="cursor:pointer;border-radius:6px;padding:2px 4px;transition:background 0.15s;" onmouseenter="this.style.background='rgba(255,255,255,0.07)'" onmouseleave="this.style.background='transparent'">
+      <div id="leg-dot-2026-06-13" style="width:14px;height:14px;border-radius:50%;background:#a855f7;border:2px solid #fff;flex-shrink:0"></div>
+      <span style="color:#cbd5e1">13 Jun</span><span style="font-size:9px;color:#64748b;margin-left:3px;">🎨</span>
+    </div>
     <div class="leg-row"><div class="leg-a" style="border-color:#ef4444"></div><span style="color:#cbd5e1">Belum</span></div>
   </div>
 </div>
@@ -144,6 +156,44 @@
   </div>
 </div>
 <div id="drag-rect"></div>
+
+<!-- Date Color Picker Modal -->
+<div id="date-color-modal" style="display:none;position:fixed;inset:0;z-index:3000;align-items:flex-end;justify-content:center;">
+  <div onclick="closeDateColorPicker()" style="position:absolute;inset:0;background:rgba(0,0,0,0.5);"></div>
+  <div style="position:relative;background:#1a1d27;border-radius:16px 16px 0 0;padding:16px 16px 32px;width:100%;max-width:480px;border-top:1px solid #2d3148;z-index:1;">
+    <div style="width:36px;height:4px;background:#3d4263;border-radius:2px;margin:0 auto 14px;"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div id="dcm-dot" style="width:22px;height:22px;border-radius:50%;border:2.5px solid #fff;flex-shrink:0;"></div>
+      <div>
+        <div id="dcm-title" style="font-size:15px;font-weight:700;color:#f1f5f9;"></div>
+        <div id="dcm-count" style="font-size:11px;color:#94a3b8;margin-top:1px;"></div>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Pilih Warna Baru</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;" id="dcm-presets">
+      <div class="plan-preset" style="background:#22c55e" data-color="#22c55e" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#06b6d4" data-color="#06b6d4" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#f97316" data-color="#f97316" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#a855f7" data-color="#a855f7" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#3b82f6" data-color="#3b82f6" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#ec4899" data-color="#ec4899" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#eab308" data-color="#eab308" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#14b8a6" data-color="#14b8a6" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#ef4444" data-color="#ef4444" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-preset" style="background:#f43f5e" data-color="#f43f5e" onclick="dcmSelectPreset(this)"></div>
+      <div class="plan-custom-wrap" title="Warna custom">
+        <div class="plan-custom-btn">＋</div>
+        <input type="color" id="dcm-color-custom" value="#22c55e" oninput="dcmCustomColor(this.value)" onchange="dcmCustomColor(this.value)">
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <div id="dcm-preview" style="width:20px;height:20px;border-radius:50%;border:2px solid #fff;flex-shrink:0;"></div>
+      <span id="dcm-preview-label" style="font-size:12px;color:#94a3b8;">Warna dipilih</span>
+    </div>
+    <button onclick="applyDateColor()" style="width:100%;padding:12px;border-radius:10px;background:#8b5cf6;color:#fff;border:none;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px;">✓ Terapkan ke Semua Titik Tanggal Ini</button>
+    <button onclick="closeDateColorPicker()" style="width:100%;padding:10px;border-radius:10px;background:#252840;color:#94a3b8;border:none;font-size:13px;cursor:pointer;">Batal</button>
+  </div>
+</div>
 
 <div class="overlay" id="overlay" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
@@ -379,7 +429,7 @@ const SUMUR = [
 
 const COLOR={belum:'#ef4444',masalah:'#f59e0b',selesai:'#22c55e'};
 const STORAGE_KEY='bor_status_v4',REAL_KEY='bor_realisasi_v2';
-const SHEET_URL='https://script.google.com/macros/s/AKfycbwS6c34J5QDghJ44i2jmlgwc_YGMO_mlZmkB7r7_0YbOx7fwATTAgnRXlL60nEBIab9xw/exec';
+const SHEET_URL='https://script.google.com/macros/s/AKfycbxpNF2QuPjCBcoagTqeEo3SkQXQFpYsrUP-WFojv2b_jVWUir18kdu9oMgyPAbjFOecDA/exec';
 
 let statusMap={},realisasiMap={};
 try{const s=localStorage.getItem(STORAGE_KEY);if(s)statusMap=JSON.parse(s);}catch(e){}
@@ -414,6 +464,14 @@ L.control.layers(
   {position:'topright',collapsed:true}
 ).addTo(map);
 
+// ── Declared early so makeIconR/makeIconA can reference them ──
+const PLAN_KEY = 'bor_plan_v1';
+let planMap = {};
+try { const p = localStorage.getItem(PLAN_KEY); if(p) planMap = JSON.parse(p); } catch(e) {}
+let planMode = false;
+let selectedTitik = new Set();
+let selectedPlanColor = '#8b5cf6';
+
 function makeIconA(status){
   const c=COLOR[status];
   return L.divIcon({
@@ -423,12 +481,21 @@ function makeIconA(status){
   });
 }
 
-function makeIconR(status){
-  const c=COLOR[status];
+function makeIconR(status, nama){
+  // Isi = warna tanggal / plan, border (outline) = warna status
+  let fill = 'rgba(0,0,0,0.3)';
+  if (nama && planMap && planMap[nama]) {
+    fill = planMap[nama];
+  } else if (nama && TANGGAL_MAP && TANGGAL_MAP[nama] && WARNA_TANGGAL && WARNA_TANGGAL[TANGGAL_MAP[nama]]) {
+    fill = WARNA_TANGGAL[TANGGAL_MAP[nama]];
+  } else {
+    fill = COLOR[status];
+  }
+  const border = COLOR[status];
   return L.divIcon({
     className:'',
-    html:`<div style="width:14px;height:14px;border-radius:50%;background:${c};box-shadow:0 1px 4px rgba(0,0,0,0.6);border:1.5px solid rgba(255,255,255,0.7)"></div>`,
-    iconSize:[14,14],iconAnchor:[7,7]
+    html:`<div style="width:16px;height:16px;border-radius:50%;background:${fill};box-shadow:0 1px 4px rgba(0,0,0,0.6);border:3px solid ${border}"></div>`,
+    iconSize:[16,16],iconAnchor:[8,8]
   });
 }
 
@@ -449,7 +516,7 @@ function renderRealisasi(t){
   const r=realisasiMap[t.nama];
   if(!r)return;
   const [rlat,rlon]=utm47N_to_latlon(r.x,r.y);
-  const mR=L.marker([rlat,rlon],{icon:makeIconR(statusMap[t.nama]),zIndexOffset:10}).addTo(map);
+  const mR=L.marker([rlat,rlon],{icon:makeIconR(statusMap[t.nama], t.nama),zIndexOffset:10}).addTo(map);
   mR.on('click',()=>openSheet(t));
   markersR[t.nama]=mR;
   labelsR[t.nama]=L.marker([rlat,rlon],{icon:makeLabelIcon(`${t.nama}(r)`),interactive:false,zIndexOffset:20}).addTo(map);
@@ -531,7 +598,7 @@ function setStatus(status){
   statusMap[t.nama]=status;
   save();
   markersA[t.nama].setIcon(makeIconA(status));
-  if(markersR[t.nama])markersR[t.nama].setIcon(makeIconR(status));
+  if(markersR[t.nama])markersR[t.nama].setIcon(makeIconR(status, activeTitik ? activeTitik.nama : null));
   updateStats();
   const label=status==='belum'?'Belum':status==='masalah'?'Masalah Izin':'Selesai';
   document.getElementById('last-update').textContent=`${t.nama} → ${label} · ${new Date().toLocaleTimeString('id-ID')}`;
@@ -573,16 +640,8 @@ function clearRealisasi(){
 }
 
 // ══════════════════════════════════════════════
-// PLAN COLOR SYSTEM
+// PLAN COLOR SYSTEM (planMap/planMode declared above before makeIconR)
 // ══════════════════════════════════════════════
-const PLAN_KEY = 'bor_plan_v1';
-let planMap = {}; // { "DL01": "#8b5cf6", ... }
-try { const p = localStorage.getItem(PLAN_KEY); if(p) planMap = JSON.parse(p); } catch(e) {}
-
-// ── Plan Mode State (declared early so makeIconAWithPlan can reference planMode) ──
-let planMode = false;
-let selectedTitik = new Set();
-let selectedPlanColor = '#8b5cf6';
 
 function savePlan() {
   try { localStorage.setItem(PLAN_KEY, JSON.stringify(planMap)); } catch(e) {}
@@ -779,11 +838,7 @@ function updateSheetPlanPreview(nama) {
   }
 }
 
-// Patch openSheet to show plan preview
-const _origOpenSheet = openSheet;
-// We'll inject into openSheet by modifying it — but since it's already defined,
-// we add the call at the end of setStatus & openSheet via wrapper:
-const origOpenSheet = window.openSheet;
+// openSheet — versi final dengan plan preview
 function openSheet(t) {
   activeTitik = t;
   // restore btn visibility (bisa tersembunyi saat klik sumur)
@@ -960,8 +1015,7 @@ function syncPlanFromSheet(data) {
   if (changed) savePlan();
 }
 
-// Patch syncFromSheet to also read plan
-const _origSync = syncFromSheet;
+// syncFromSheet — versi final dengan plan sync
 function syncFromSheet() {
   document.getElementById('last-update').textContent = 'Mengambil data dari spreadsheet...';
   fetch(SHEET_URL)
@@ -1011,6 +1065,112 @@ function syncFromSheet() {
     .catch(err => {
       document.getElementById('last-update').textContent = 'Gagal sync: ' + err.message;
     });
+}
+
+// ══════════════════════════════════════════════
+// DATE COLOR PICKER (ganti warna per tanggal di legenda)
+// ══════════════════════════════════════════════
+const WARNA_TANGGAL_KEY = 'bor_warna_tanggal_v1';
+let dcmCurrentDateKey = null;
+let dcmCurrentColor = '#22c55e';
+
+// Load saved date colors from localStorage
+try {
+  const saved = localStorage.getItem(WARNA_TANGGAL_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    Object.assign(WARNA_TANGGAL, parsed);
+    // Update legend dots
+    Object.entries(WARNA_TANGGAL).forEach(([key, color]) => {
+      const dot = document.getElementById('leg-dot-' + key);
+      if (dot) dot.style.background = color;
+    });
+  }
+} catch(e) {}
+
+function saveWarnaTanggal() {
+  try { localStorage.setItem(WARNA_TANGGAL_KEY, JSON.stringify(WARNA_TANGGAL)); } catch(e) {}
+}
+
+function openDateColorPicker(dateKey, dateLabel) {
+  dcmCurrentDateKey = dateKey;
+  dcmCurrentColor = WARNA_TANGGAL[dateKey] || '#22c55e';
+
+  // Count titik on this date
+  const count = Object.values(TANGGAL_MAP).filter(d => d === dateKey).length;
+
+  // Update modal UI
+  document.getElementById('dcm-title').textContent = 'Tanggal ' + dateLabel;
+  document.getElementById('dcm-count').textContent = count + ' titik bor di tanggal ini';
+  document.getElementById('dcm-dot').style.background = dcmCurrentColor;
+  document.getElementById('dcm-preview').style.background = dcmCurrentColor;
+  document.getElementById('dcm-preview-label').textContent = 'Warna saat ini: ' + dcmCurrentColor;
+  document.getElementById('dcm-color-custom').value = dcmCurrentColor;
+
+  // Reset preset selection
+  document.querySelectorAll('#dcm-presets .plan-preset').forEach(el => {
+    el.classList.remove('selected');
+    if (el.dataset.color === dcmCurrentColor) el.classList.add('selected');
+  });
+
+  const modal = document.getElementById('date-color-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => modal.style.opacity = '1', 10);
+}
+
+function closeDateColorPicker() {
+  document.getElementById('date-color-modal').style.display = 'none';
+  dcmCurrentDateKey = null;
+}
+
+function dcmSelectPreset(el) {
+  document.querySelectorAll('#dcm-presets .plan-preset').forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  dcmCurrentColor = el.dataset.color;
+  document.getElementById('dcm-preview').style.background = dcmCurrentColor;
+  document.getElementById('dcm-preview-label').textContent = 'Warna dipilih: ' + dcmCurrentColor;
+  document.getElementById('dcm-color-custom').value = dcmCurrentColor;
+}
+
+function dcmCustomColor(val) {
+  dcmCurrentColor = val;
+  document.getElementById('dcm-preview').style.background = val;
+  document.getElementById('dcm-preview-label').textContent = 'Warna dipilih: ' + val;
+  document.querySelectorAll('#dcm-presets .plan-preset').forEach(e => e.classList.remove('selected'));
+}
+
+function applyDateColor() {
+  if (!dcmCurrentDateKey) return;
+  const dateKey = dcmCurrentDateKey;
+  const newColor = dcmCurrentColor;
+
+  // Update WARNA_TANGGAL
+  WARNA_TANGGAL[dateKey] = newColor;
+  saveWarnaTanggal();
+
+  // Update legend dot
+  const dot = document.getElementById('leg-dot-' + dateKey);
+  if (dot) dot.style.background = newColor;
+
+  // Refresh semua marker yang punya tanggal ini
+  let refreshed = 0;
+  TITIK.forEach(t => {
+    if (TANGGAL_MAP[t.nama] === dateKey) {
+      // Hanya refresh jika tidak punya planMap override manual
+      if (!planMap[t.nama]) {
+        refreshMarkerA(t.nama);
+        if (markersR[t.nama]) {
+          markersR[t.nama].setIcon(makeIconR(statusMap[t.nama], t.nama));
+        }
+      }
+      refreshed++;
+    }
+  });
+
+  document.getElementById('last-update').textContent =
+    `Warna ${dateKey} diubah → ${newColor} · ${refreshed} titik diperbarui`;
+
+  closeDateColorPicker();
 }
 
 syncFromSheet();
