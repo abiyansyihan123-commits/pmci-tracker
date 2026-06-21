@@ -1,166 +1,174 @@
 /**
- * Code.gs — Google Apps Script untuk Web Peta PMCI
- * Spreadsheet: Form_Report_PMCI_Medan-Binjai_2026
+ * =====================================================================
+ * APPS SCRIPT — Progres PMCI
+ * Menghubungkan web peta (index.html, Leaflet) ke Google Sheet:
+ * https://docs.google.com/spreadsheets/d/1jkaoAE5h-gRsAdkZG2akKDGD_Frc-Tgy1vEsJ3aWWHc
  *
- * CARA DEPLOY:
- * 1. Buka script.google.com → project ini
- * 2. Ganti seluruh isi dengan kode ini
- * 3. Deploy → Manage Deployments → Edit (ikon pensil) → Version: "New version" → Deploy
- * 4. Pastikan: Execute as = Me, Who has access = Anyone
- * 5. Salin URL deployment → update SHEET_URL di index.html jika URL berubah
+ * KONTRAK DATA dengan frontend (jangan diubah tanpa update index.html juga):
+ *  GET  -> { status:'ok', data:[{nama, tanggal, utm_xa, utm_ya}, ...], plan:{nama:warna,...} }
+ *  POST -> body: { action:'savePlan', data:{nama:warna,...} }  => { status:'ok' }
+ *
+ * CATATAN PENTING (baca sebelum deploy):
+ * - Kode Titik di sheet ini formatnya 3 digit (DL001, DL082, ...),
+ *   sedangkan array TITIK di index.html formatnya TANPA leading-zero ekstra
+ *   (DL01, DL82, DL100, ...). Fungsi normalizeKode() di bawah menangani
+ *   konversi ini. Kalau nanti ada kode titik dengan pola lain (bukan
+ *   [huruf][angka]), cek ulang fungsi ini.
+ * - Saya asumsikan nama tab data = "Sheet1", header di baris 1-2, data
+ *   mulai baris 3, dan kolom C/F/J/K = Kode Titik/Tanggal Sampling/UTM_XA/UTM_YA.
+ *   Ini sudah saya verifikasi silang dengan REALISASI_AWAL di index.html
+ *   untuk baris-baris yang sempat saya lihat (s.d. DL098). Tolong cek lagi
+ *   untuk baris-baris setelahnya kalau strukturnya beda.
+ * =====================================================================
  */
 
-// ══════════════════════════════════════════════
-// KONFIGURASI — sesuaikan jika nama sheet berbeda
-// ══════════════════════════════════════════════
-var SHEET_NAME      = 'Form Report';   // nama tab spreadsheet utama
-var PLAN_SHEET_NAME = 'PlanColors';    // nama tab untuk menyimpan warna plan
+const CONFIG = {
+  SHEET_NAME: 'Sheet1',        // nama tab data utama — ganti kalau beda
+  PLAN_SHEET_NAME: 'Plan',     // tab penyimpanan warna "Plan Mode" (auto-dibuat kalau belum ada)
+  HEADER_ROWS: 2,               // baris 1 = judul kolom, baris 2 = sub-judul (UTM_XP/YP/XA/YA)
+  COL_KODE_TITIK: 3,             // kolom C
+  COL_TANGGAL_SAMPLING: 6,      // kolom F
+  COL_UTM_XA: 10,                // kolom J
+  COL_UTM_YA: 11                 // kolom K
+};
 
-// Index kolom (0-based), sesuai struktur spreadsheet:
-// Baris 1 (index 0): No | Jenis | Kode Titik | Kode Modul | Surveyor | Tanggal Sampling | Waktu | Koordinat Plan | | Koordinat Actual | | Elevasi | Jarak Offset | ...
-// Baris 2 (index 1): sub-header:  | | | | | | | UTM_XP | UTM_YP | UTM_XA | UTM_YA | ...
-// Data mulai baris 3 (index 2)
-var COL_KODE_TITIK = 2;   // "Kode Titik"     → DL001, W1, dll
-var COL_TANGGAL    = 5;   // "Tanggal Sampling"
-var COL_UTM_XP     = 7;   // "UTM_XP"  (koordinat plan)
-var COL_UTM_YP     = 8;   // "UTM_YP"
-var COL_UTM_XA     = 9;   // "UTM_XA"  (koordinat actual/realisasi)
-var COL_UTM_YA     = 10;  // "UTM_YA"
-var DATA_START_ROW = 2;   // index baris pertama data (skip 2 baris header)
+// ─────────────────────────────────────────────
+// ENTRY POINTS
+// ─────────────────────────────────────────────
 
-// ══════════════════════════════════════════════
-// doGet — dipanggil saat peta fetch data
-// ══════════════════════════════════════════════
 function doGet(e) {
   try {
-    var ss    = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(SHEET_NAME);
-
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
     if (!sheet) {
-      return jsonResponse({ status: 'error', message: 'Sheet "' + SHEET_NAME + '" tidak ditemukan. Cek nama tab di spreadsheet.' });
+      throw new Error('Sheet "' + CONFIG.SHEET_NAME + '" tidak ditemukan. Cek nama tab di CONFIG.SHEET_NAME.');
     }
 
-    var data = sheet.getDataRange().getValues();
-    var rows = [];
+    const lastRow = sheet.getLastRow();
+    const data = [];
 
-    for (var i = DATA_START_ROW; i < data.length; i++) {
-      var row  = data[i];
-      var nama = String(row[COL_KODE_TITIK] || '').trim();
-      if (!nama || nama === '') continue;
+    if (lastRow > CONFIG.HEADER_ROWS) {
+      const numRows = lastRow - CONFIG.HEADER_ROWS;
+      const values = sheet.getRange(CONFIG.HEADER_ROWS + 1, 1, numRows, CONFIG.COL_UTM_YA).getValues();
 
-      // Konversi tanggal: Apps Script otomatis parse Date dari sel spreadsheet
-      var tanggal    = row[COL_TANGGAL];
-      var tanggalStr = '';
-      if (tanggal instanceof Date && !isNaN(tanggal)) {
-        tanggalStr = Utilities.formatDate(tanggal, 'Asia/Jakarta', 'yyyy-MM-dd');
-      } else if (tanggal !== null && tanggal !== undefined && String(tanggal).trim() !== '') {
-        // Fallback: angka serial Excel atau string
-        var strVal = String(tanggal).trim();
-        if (/^\d+(\.\d+)?$/.test(strVal)) {
-          // Excel serial number → konversi manual
-          var excelSerial = parseFloat(strVal);
-          var d = new Date((excelSerial - 25569) * 86400 * 1000);
-          if (!isNaN(d)) {
-            tanggalStr = Utilities.formatDate(d, 'Asia/Jakarta', 'yyyy-MM-dd');
-          }
-        } else {
-          tanggalStr = strVal;
-        }
+      for (let i = 0; i < values.length; i++) {
+        const row = values[i];
+        const kodeRaw = row[CONFIG.COL_KODE_TITIK - 1];
+        if (!kodeRaw || String(kodeRaw).trim() === '') continue; // skip baris kosong
+
+        data.push({
+          nama: normalizeKode(kodeRaw),
+          tanggal: formatTanggal(row[CONFIG.COL_TANGGAL_SAMPLING - 1]),
+          utm_xa: row[CONFIG.COL_UTM_XA - 1],
+          utm_ya: row[CONFIG.COL_UTM_YA - 1]
+        });
       }
-
-      // Koordinat — bisa jadi angka atau string
-      var utmXa = _toNum(row[COL_UTM_XA]);
-      var utmYa = _toNum(row[COL_UTM_YA]);
-      var utmXp = _toNum(row[COL_UTM_XP]);
-      var utmYp = _toNum(row[COL_UTM_YP]);
-
-      rows.push({
-        nama:    nama,
-        tanggal: tanggalStr,
-        utm_xp:  utmXp,
-        utm_yp:  utmYp,
-        utm_xa:  utmXa,
-        utm_ya:  utmYa
-      });
     }
 
-    // Ambil plan colors dari sheet PlanColors
-    var planData = _readPlanColors(ss);
-
-    return jsonResponse({ status: 'ok', data: rows, plan: planData });
+    const plan = readPlanSheet(ss);
+    return jsonOutput({ status: 'ok', data: data, plan: plan });
 
   } catch (err) {
-    return jsonResponse({ status: 'error', message: err.toString() });
+    return jsonOutput({ status: 'error', message: err.message });
   }
 }
 
-// ══════════════════════════════════════════════
-// doPost — dipanggil saat peta simpan plan colors
-// ══════════════════════════════════════════════
 function doPost(e) {
   try {
-    var payload = JSON.parse(e.postData.contents);
+    const payload = JSON.parse(e.postData.contents);
 
     if (payload.action === 'savePlan') {
-      var ss        = SpreadsheetApp.getActiveSpreadsheet();
-      var planSheet = ss.getSheetByName(PLAN_SHEET_NAME);
-
-      // Buat sheet PlanColors jika belum ada
-      if (!planSheet) {
-        planSheet = ss.insertSheet(PLAN_SHEET_NAME);
-      }
-
-      // Tulis ulang seluruh isi (header + data)
-      planSheet.clearContents();
-      planSheet.getRange(1, 1, 1, 2).setValues([['nama', 'color']]);
-
-      var entries = Object.entries(payload.data || {});
-      if (entries.length > 0) {
-        planSheet.getRange(2, 1, entries.length, 2).setValues(entries);
-      }
-
-      return jsonResponse({ status: 'ok', saved: entries.length });
+      savePlanSheet(payload.data || {});
+      return jsonOutput({ status: 'ok' });
     }
 
-    return jsonResponse({ status: 'error', message: 'Unknown action: ' + (payload.action || 'undefined') });
+    return jsonOutput({ status: 'error', message: 'Action tidak dikenali: ' + payload.action });
 
   } catch (err) {
-    return jsonResponse({ status: 'error', message: err.toString() });
+    return jsonOutput({ status: 'error', message: err.message });
   }
 }
 
-// ══════════════════════════════════════════════
-// Helper: baca sheet PlanColors
-// ══════════════════════════════════════════════
-function _readPlanColors(ss) {
-  var result = {};
-  try {
-    var planSheet = ss.getSheetByName(PLAN_SHEET_NAME);
-    if (!planSheet) return result;
-    var planData  = planSheet.getDataRange().getValues();
-    for (var p = 1; p < planData.length; p++) {
-      var pNama  = String(planData[p][0] || '').trim();
-      var pColor = String(planData[p][1] || '').trim();
-      if (pNama && pColor) result[pNama] = pColor;
-    }
-  } catch (e) {}
-  return result;
-}
+// ─────────────────────────────────────────────
+// HELPER — output & format
+// ─────────────────────────────────────────────
 
-// ══════════════════════════════════════════════
-// Helper: konversi nilai sel ke angka, kosong jika gagal
-// ══════════════════════════════════════════════
-function _toNum(val) {
-  if (val === null || val === undefined || val === '') return '';
-  var n = parseFloat(String(val).replace(',', '.'));
-  return isNaN(n) ? '' : n;
-}
-
-// ══════════════════════════════════════════════
-// Helper: buat ContentService JSON response dengan CORS
-// ══════════════════════════════════════════════
-function jsonResponse(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
+function jsonOutput(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Sheet bisa simpan tanggal sebagai objek Date (kalau kolom terformat Date)
+// atau sebagai teks biasa. Dua kasus ini ditangani; hasil akhir selalu
+// string 'yyyy-MM-dd' (atau '' kalau kosong) supaya aman dari masalah timezone
+// saat di-parse ulang oleh `new Date(...)` di frontend.
+function formatTanggal(val) {
+  if (val === '' || val === null || val === undefined) return '';
+  if (Object.prototype.toString.call(val) === '[object Date]') {
+    if (isNaN(val.getTime())) return '';
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  return String(val).trim();
+}
+
+// Konversi "DL001" -> "DL01", "DL082" -> "DL82", "DL100" -> "DL100"
+// supaya match dengan format nama di TITIK/SUMUR pada index.html.
+// Kalau formatnya bukan [huruf-huruf][angka] (mis. kode custom), nilai
+// dikembalikan apa adanya (tidak diubah).
+function normalizeKode(kode) {
+  const s = String(kode).trim();
+  const m = s.match(/^([A-Za-z]+)0*([0-9]+)$/);
+  if (!m) return s;
+  const prefix = m[1];
+  let numStr = String(parseInt(m[2], 10));
+  if (numStr.length < 2) numStr = '0' + numStr; // padding minimal 2 digit (DL01..DL09)
+  return prefix + numStr;
+}
+
+// ─────────────────────────────────────────────
+// HELPER — tab "Plan" (warna Plan Mode dari web)
+// ─────────────────────────────────────────────
+
+function getOrCreatePlanSheet(ss) {
+  let sheet = ss.getSheetByName(CONFIG.PLAN_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG.PLAN_SHEET_NAME);
+    sheet.getRange(1, 1, 1, 2).setValues([['Kode Titik', 'Warna']]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function readPlanSheet(ss) {
+  const sheet = ss.getSheetByName(CONFIG.PLAN_SHEET_NAME);
+  const plan = {};
+  if (!sheet) return plan;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return plan;
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  values.forEach(function (r) {
+    const nama = r[0], warna = r[1];
+    if (nama && warna) plan[normalizeKode(nama)] = String(warna).trim();
+  });
+  return plan;
+}
+
+function savePlanSheet(planData) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = getOrCreatePlanSheet(ss);
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.getRange(2, 1, lastRow - 1, 2).clearContent();
+  }
+
+  const rows = Object.keys(planData).map(function (nama) {
+    return [nama, planData[nama]];
+  });
+
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, 2).setValues(rows);
+  }
 }
